@@ -4,9 +4,12 @@
  */
 import {
   ApplicationStatus,
+  EmploymentType,
+  ExperienceLevel,
   JobStatus,
   PrismaClient,
   Role,
+  WorkMode,
 } from '@prisma/client';
 import argon2 from 'argon2';
 
@@ -65,7 +68,13 @@ async function main() {
         'Build and scale our TypeScript APIs. You will work with NestJS, ' +
         'PostgreSQL, Prisma, Docker and AWS. Strong SQL skills required.',
       requirements: 'TypeScript, Node, PostgreSQL, Docker, REST',
-      status: JobStatus.OPEN,
+      employmentType: EmploymentType.FULL_TIME,
+      experienceLevel: ExperienceLevel.SENIOR,
+      workMode: WorkMode.REMOTE,
+      salaryMin: 130000, salaryMax: 170000,
+      educationRequirement: 'BS in CS or equivalent experience',
+      openings: 2,
+      status: JobStatus.PUBLISHED,
       skills: {
         create: await Promise.all(
           ['typescript', 'node', 'postgresql', 'docker', 'rest'].map(
@@ -83,7 +92,12 @@ async function main() {
         'Own our Next.js app. React, TypeScript, Tailwind, data fetching ' +
         'with TanStack Query, charts with Recharts.',
       requirements: 'React, TypeScript, Next.js, Tailwind',
-      status: JobStatus.OPEN,
+      employmentType: EmploymentType.FULL_TIME,
+      experienceLevel: ExperienceLevel.MID,
+      workMode: WorkMode.HYBRID,
+      salaryMin: 110000, salaryMax: 140000,
+      openings: 1,
+      status: JobStatus.PUBLISHED,
       skills: {
         create: await Promise.all(
           ['react', 'typescript', 'next.js', 'tailwind'].map(

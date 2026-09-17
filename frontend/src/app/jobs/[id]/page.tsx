@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { api } from '@/lib/endpoints'
 import { useAuth } from '@/lib/auth'
 import { JobStatusBadge } from '@/components/badges'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -78,6 +79,22 @@ export default function JobDetail({ params }: { params: Promise<{ id: string }> 
                 {job.location && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{job.location}</span>}
                 <JobStatusBadge status={job.status} />
               </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge variant="secondary">{job.workMode}</Badge>
+                <Badge variant="secondary">{job.employmentType.replace('_', ' ')}</Badge>
+                <Badge variant="outline">{job.experienceLevel}</Badge>
+                {job.openings > 1 && <Badge variant="outline">{job.openings} openings</Badge>}
+                {job.salaryMin && job.salaryMax && (
+                  <Badge variant="outline">
+                    ${(job.salaryMin / 1000).toFixed(0)}k–${(job.salaryMax / 1000).toFixed(0)}k
+                  </Badge>
+                )}
+                {job.applicationDeadline && (
+                  <Badge variant="outline">
+                    Apply by {new Date(job.applicationDeadline).toLocaleDateString()}
+                  </Badge>
+                )}
+              </div>
             </div>
             {user?.role === 'CANDIDATE' && (
               <Button variant="outline" size="sm" onClick={() => toggleSave.mutate()}>
@@ -94,10 +111,37 @@ export default function JobDetail({ params }: { params: Promise<{ id: string }> 
               <strong>Requirements:</strong> {job.requirements}
             </div>
           )}
+          {job.educationRequirement && (
+            <div className="mt-2 rounded-md bg-muted p-3 text-sm">
+              <strong>Education:</strong> {job.educationRequirement}
+            </div>
+          )}
+          {!!job.skills?.length && (
+            <div className="mt-4 space-y-2 text-sm">
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Required skills</p>
+                <div className="flex flex-wrap gap-1">
+                  {job.skills.filter((s) => s.required).map((s) => (
+                    <Badge key={s.skill.name} variant="secondary">{s.skill.name}</Badge>
+                  ))}
+                </div>
+              </div>
+              {job.skills.some((s) => !s.required) && (
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Nice to have</p>
+                  <div className="flex flex-wrap gap-1">
+                    {job.skills.filter((s) => !s.required).map((s) => (
+                      <Badge key={s.skill.name} variant="outline">{s.skill.name}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {user?.role === 'CANDIDATE' && job.status === 'OPEN' && (
+      {user?.role === 'CANDIDATE' && job.status === 'PUBLISHED' && (
         <Card className="mt-4">
           <CardHeader><CardTitle className="text-base">Apply to this job</CardTitle></CardHeader>
           <CardContent>

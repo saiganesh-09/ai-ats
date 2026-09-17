@@ -57,7 +57,7 @@ erDiagram
 | `educations` | id | `user_id`→users | Candidate education |
 | `certifications` | id | `user_id`→users | Candidate certs |
 | `resumes` | id | `candidate_id`→users | storage_key + raw_text + parsed JSONB |
-| `jobs` | id | `company_id`, `recruiter_id`, `hiring_manager_id` | Posting + lifecycle |
+| `jobs` | id | `company_id`, `recruiter_id`, `hiring_manager_id` | Posting + lifecycle + search fields |
 | `applications` | id | `job_id`, `candidate_id`, `resume_id`, `assigned_recruiter_id` | Join table + state machine |
 | `application_status_history` | id | `application_id`, `changed_by_id` | Immutable transition log |
 | `notes` | id | `application_id`, `author_id` | Internal recruiter notes |
@@ -119,6 +119,17 @@ Beyond PK/UNIQUE indexes, explicit `@@index` on every hot lookup:
 `application_status_history.application_id`, `resumes.candidate_id`,
 `notifications.user_id`, `reports.job_id`, `activity_log.actor_id`,
 `refresh_tokens.user_id` / `.token_hash`.
+
+**Search-optimized indexes on `jobs`:**
+- `(status, created_at)` — the board's hot query: `PUBLISHED` + newest-first
+- `(status, employment_type, work_mode)` — the common filter combo
+- `location`, `salary_max` — range/exact filters
+- `job_skills.skill_id` — "jobs needing skill X" (composite PK order doesn't
+  cover skill-only lookups)
+- `GIN pg_trgm` on `title` + `description` (custom SQL in the migration) —
+  plain btree can't serve `ILIKE '%q%'`; trigram is the standard Postgres
+  answer for substring keyword search. Full-text `tsvector` would be the
+  next step at scale.
 
 ## Cascading rules
 

@@ -2,8 +2,8 @@
 import { request } from './api'
 import type {
   ActivityEntry, AdminAnalytics, Application, Company, Dashboard,
-  Interview, Job, MatchDetails, Notification, Profile, Report,
-  Resume, SavedJob, User,
+  Interview, Job, JobSearchParams, MatchDetails, Notification, Paginated,
+  Profile, Report, Resume, SavedJob, User,
 } from './types'
 
 export const api = {
@@ -30,17 +30,34 @@ export const api = {
     request<Profile>('/profiles/mine', { method: 'PUT', body: JSON.stringify(data) }),
 
   // jobs
-  listJobs: (params?: { q?: string; location?: string; sort?: string; page?: number }) => {
-    const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v).map(([k, v]) => [k, String(v)]))
-    return request<Job[]>(`/jobs${qs.size ? `?${qs}` : ''}`)
+  listJobs: (params?: JobSearchParams) => {
+    const qs = new URLSearchParams(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]),
+    )
+    return request<Paginated<Job>>(`/jobs${qs.size ? `?${qs}` : ''}`)
   },
   getJob: (id: number) => request<Job>(`/jobs/${id}`),
   manageJobs: () => request<Job[]>('/jobs/manage/list'),
-  createJob: (data: { title: string; location?: string; description: string; requirements?: string; hiringManagerId?: number }) =>
-    request<Job>('/jobs', { method: 'POST', body: JSON.stringify(data) }),
+  createJob: (data: {
+    title: string
+    location?: string
+    description: string
+    requirements?: string
+    employmentType?: string
+    experienceLevel?: string
+    workMode?: string
+    salaryMin?: number
+    salaryMax?: number
+    educationRequirement?: string
+    applicationDeadline?: string
+    openings?: number
+    requiredSkills?: string[]
+    preferredSkills?: string[]
+    hiringManagerId?: number
+  }) => request<Job>('/jobs', { method: 'POST', body: JSON.stringify(data) }),
   updateJob: (id: number, data: Partial<Job>) =>
     request<Job>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  jobAction: (id: number, action: 'publish' | 'unpublish' | 'close') =>
+  jobAction: (id: number, action: 'publish' | 'pause' | 'close') =>
     request<Job>(`/jobs/${id}/${action}`, { method: 'POST' }),
   analyzeJob: (id: number) => request<Record<string, unknown>>(`/jobs/${id}/analyze`, { method: 'POST' }),
   saveJob: (id: number) => request<SavedJob>(`/jobs/${id}/save`, { method: 'POST' }),

@@ -24,9 +24,21 @@ const schema = z.object({
   location: z.string().optional(),
   description: z.string().min(20, 'Min 20 characters'),
   requirements: z.string().optional(),
+  employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP']),
+  experienceLevel: z.enum(['ENTRY', 'MID', 'SENIOR', 'LEAD']),
+  workMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']),
+  salaryMin: z.string().optional(),
+  salaryMax: z.string().optional(),
+  educationRequirement: z.string().optional(),
+  applicationDeadline: z.string().optional(),
+  openings: z.string().optional(),
+  requiredSkills: z.string().optional(),
+  preferredSkills: z.string().optional(),
   hiringManagerId: z.string().optional(),
 })
 type Form = z.infer<typeof schema>
+
+const csv = (s?: string) => s?.split(',').map((x) => x.trim()).filter(Boolean)
 
 export default function ManageJobs() {
   const qc = useQueryClient()
@@ -43,6 +55,12 @@ export default function ManageJobs() {
     mutationFn: (data: Form) =>
       api.createJob({
         ...data,
+        salaryMin: data.salaryMin ? Number(data.salaryMin) : undefined,
+        salaryMax: data.salaryMax ? Number(data.salaryMax) : undefined,
+        openings: data.openings ? Number(data.openings) : undefined,
+        applicationDeadline: data.applicationDeadline || undefined,
+        requiredSkills: csv(data.requiredSkills),
+        preferredSkills: csv(data.preferredSkills),
         hiringManagerId: data.hiringManagerId ? Number(data.hiringManagerId) : undefined,
       }),
     onSuccess: () => {
@@ -55,7 +73,7 @@ export default function ManageJobs() {
   })
 
   const action = useMutation({
-    mutationFn: ({ id, act }: { id: number; act: 'publish' | 'unpublish' | 'close' }) =>
+    mutationFn: ({ id, act }: { id: number; act: 'publish' | 'pause' | 'close' }) =>
       api.jobAction(id, act),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['manageJobs'] }),
     onError: (e) => toast.error(e.message),
@@ -98,18 +116,91 @@ export default function ManageJobs() {
                 <Input {...register('title')} />
                 {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label>Location</Label>
-                <Input {...register('location')} placeholder="Remote / City" />
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1.5">
+                  <Label>Type</Label>
+                  <Select defaultValue="FULL_TIME" onValueChange={(v) => v && setValue('employmentType', v as Form['employmentType'])}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FULL_TIME">Full-time</SelectItem>
+                      <SelectItem value="PART_TIME">Part-time</SelectItem>
+                      <SelectItem value="CONTRACT">Contract</SelectItem>
+                      <SelectItem value="INTERNSHIP">Internship</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Level</Label>
+                  <Select defaultValue="MID" onValueChange={(v) => v && setValue('experienceLevel', v as Form['experienceLevel'])}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ENTRY">Entry</SelectItem>
+                      <SelectItem value="MID">Mid</SelectItem>
+                      <SelectItem value="SENIOR">Senior</SelectItem>
+                      <SelectItem value="LEAD">Lead</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Work mode</Label>
+                  <Select defaultValue="ONSITE" onValueChange={(v) => v && setValue('workMode', v as Form['workMode'])}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REMOTE">Remote</SelectItem>
+                      <SelectItem value="HYBRID">Hybrid</SelectItem>
+                      <SelectItem value="ONSITE">On-site</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label>Location</Label>
+                  <Input {...register('location')} placeholder="City / Remote" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Openings</Label>
+                  <Input type="number" min={1} defaultValue="1" {...register('openings')} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label>Salary min (annual)</Label>
+                  <Input type="number" min={0} placeholder="120000" {...register('salaryMin')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Salary max</Label>
+                  <Input type="number" min={0} placeholder="160000" {...register('salaryMax')} />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Description</Label>
-                <Textarea rows={5} {...register('description')} />
+                <Textarea rows={4} {...register('description')} />
                 {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Requirements (used by AI matching)</Label>
+                <Label>Requirements</Label>
                 <Textarea rows={2} {...register('requirements')} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label>Required skills</Label>
+                  <Input placeholder="typescript, node, sql" {...register('requiredSkills')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Preferred (nice-to-have)</Label>
+                  <Input placeholder="aws, docker" {...register('preferredSkills')} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label>Education requirement</Label>
+                  <Input placeholder="BS in CS or equivalent" {...register('educationRequirement')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Application deadline</Label>
+                  <Input type="date" {...register('applicationDeadline')} />
+                </div>
               </div>
               {hiringManagers.length > 0 && (
                 <div className="space-y-1.5">
@@ -145,7 +236,7 @@ export default function ManageJobs() {
 
 function JobRow({ job, onAction, onAnalyze }: {
   job: Job
-  onAction: (act: 'publish' | 'unpublish' | 'close') => void
+  onAction: (act: 'publish' | 'pause' | 'close') => void
   onAnalyze: () => void
 }) {
   return (
@@ -168,7 +259,8 @@ function JobRow({ job, onAction, onAnalyze }: {
             <BrainCircuit className="h-4 w-4" />
           </Button>
           {job.status === 'DRAFT' && <Button size="sm" onClick={() => onAction('publish')}>Publish</Button>}
-          {job.status === 'OPEN' && <Button variant="outline" size="sm" onClick={() => onAction('unpublish')}>Unpublish</Button>}
+          {job.status === 'PAUSED' && <Button size="sm" onClick={() => onAction('publish')}>Resume</Button>}
+          {job.status === 'PUBLISHED' && <Button variant="outline" size="sm" onClick={() => onAction('pause')}>Pause</Button>}
           {job.status !== 'CLOSED' && <Button variant="outline" size="sm" onClick={() => onAction('close')}>Close</Button>}
           <Button variant="secondary" size="sm" render={<Link href={`/recruiter/jobs/${job.id}`} />}>
             <Users className="mr-1 h-4 w-4" />Pipeline

@@ -68,7 +68,7 @@ export class AdminController {
       }),
       this.prisma.company.count({ where: companyId ? { id: companyId } : {} }),
       this.prisma.job.count({ where: jobWhere }),
-      this.prisma.job.count({ where: { ...jobWhere, status: JobStatus.OPEN } }),
+      this.prisma.job.count({ where: { ...jobWhere, status: JobStatus.PUBLISHED } }),
       this.prisma.application.count({ where: appWhere }),
       this.prisma.application.count({
         where: { ...appWhere, status: ApplicationStatus.HIRED },

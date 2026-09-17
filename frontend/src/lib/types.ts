@@ -34,6 +34,10 @@ export interface Profile {
   certifications: Array<{ name?: string; issuer?: string; year?: number }>
 }
 
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP'
+export type ExperienceLevel = 'ENTRY' | 'MID' | 'SENIOR' | 'LEAD'
+export type WorkMode = 'REMOTE' | 'HYBRID' | 'ONSITE'
+
 export interface Job {
   id: number
   companyId: number
@@ -41,11 +45,43 @@ export interface Job {
   location: string | null
   description: string
   requirements: string | null
-  status: 'DRAFT' | 'OPEN' | 'CLOSED'
+  employmentType: EmploymentType
+  experienceLevel: ExperienceLevel
+  workMode: WorkMode
+  salaryMin: number | null
+  salaryMax: number | null
+  educationRequirement: string | null
+  applicationDeadline: string | null
+  openings: number
+  status: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'CLOSED'
   createdAt: string
   company?: { name: string }
   hiringManager?: { id: number; fullName: string } | null
+  skills?: { required: boolean; skill: { name: string } }[]
   _count?: { applications: number }
+}
+
+export interface Paginated<T> {
+  items: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface JobSearchParams {
+  q?: string
+  location?: string
+  skills?: string
+  experienceLevel?: ExperienceLevel
+  employmentType?: EmploymentType
+  workMode?: WorkMode
+  salaryMin?: number
+  salaryMax?: number
+  postedWithin?: number
+  sort?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface ParsedResume {

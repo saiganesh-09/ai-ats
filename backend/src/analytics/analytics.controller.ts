@@ -34,7 +34,7 @@ export class AnalyticsController {
       interviews, offers, hires, rejected, funnel, trend,
     ] = await Promise.all([
       this.prisma.job.count({ where: jobWhere }),
-      this.prisma.job.count({ where: { ...jobWhere, status: JobStatus.OPEN } }),
+      this.prisma.job.count({ where: { ...jobWhere, status: JobStatus.PUBLISHED } }),
       this.prisma.application.count({ where: appWhere }),
       this.prisma.application.count({
         where: { ...appWhere, status: ApplicationStatus.SHORTLISTED },

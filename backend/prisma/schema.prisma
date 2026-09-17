@@ -20,8 +20,29 @@ enum Role {
 
 enum JobStatus {
   DRAFT
-  OPEN
+  PUBLISHED
+  PAUSED
   CLOSED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
 }
 
 enum ApplicationStatus {
@@ -126,12 +147,14 @@ model CandidateSkill {
 }
 
 model JobSkill {
-  jobId   Int    @map("job_id")
-  job     Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  skillId Int    @map("skill_id")
-  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  jobId    Int     @map("job_id")
+  job      Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skillId  Int     @map("skill_id")
+  skill    Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  required Boolean @default(true) // false = "preferred/nice-to-have"
 
   @@id([jobId, skillId])
+  @@index([skillId]) // "jobs needing skill X" — PK order doesn't cover this
   @@map("job_skills")
 }
 
@@ -181,12 +204,20 @@ model Job {
   recruiter       User      @relation("JobRecruiter", fields: [recruiterId], references: [id])
   hiringManagerId Int?      @map("hiring_manager_id")
   hiringManager   User?     @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
-  title           String
-  location        String?
-  description     String
-  requirements    String?
-  status          JobStatus @default(DRAFT)
-  createdAt       DateTime  @default(now()) @map("created_at")
+  title                String
+  location             String?
+  description          String
+  requirements         String?
+  employmentType       EmploymentType  @default(FULL_TIME) @map("employment_type")
+  experienceLevel      ExperienceLevel @default(MID) @map("experience_level")
+  workMode             WorkMode        @default(ONSITE) @map("work_mode")
+  salaryMin            Int?            @map("salary_min") // annual
+  salaryMax            Int?            @map("salary_max")
+  educationRequirement String?         @map("education_requirement")
+  applicationDeadline  DateTime?       @map("application_deadline")
+  openings             Int             @default(1)
+  status               JobStatus       @default(DRAFT)
+  createdAt            DateTime        @default(now()) @map("created_at")
 
   applications Application[]
   savedBy      SavedJob[]
@@ -195,6 +226,10 @@ model Job {
 
   @@index([companyId])
   @@index([hiringManagerId])
+  @@index([status, createdAt]) // public board: PUBLISHED + newest
+  @@index([status, employmentType, workMode]) // common filter combo
+  @@index([location])
+  @@index([salaryMax])
   @@map("jobs")
 }
 

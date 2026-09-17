@@ -41,13 +41,19 @@ export class SkillsService {
     return map;
   }
 
-  /** Replace a job's skill links (called on job create/update). */
-  async syncJobSkills(jobId: number, names: string[]) {
-    const ids = await this.upsertMany(names);
+  /** Replace a job's skill links — required vs preferred is a flag on the join. */
+  async syncJobSkills(jobId: number, required: string[], preferred: string[] = []) {
+    const reqIds = await this.upsertMany(required);
+    const prefIds = await this.upsertMany(
+      preferred.filter((p) => !reqIds.has(p.trim().toLowerCase())), // required wins
+    );
     await this.prisma.$transaction([
       this.prisma.jobSkill.deleteMany({ where: { jobId } }),
       this.prisma.jobSkill.createMany({
-        data: [...ids.values()].map((skillId) => ({ jobId, skillId })),
+        data: [
+          ...[...reqIds.values()].map((skillId) => ({ jobId, skillId, required: true })),
+          ...[...prefIds.values()].map((skillId) => ({ jobId, skillId, required: false })),
+        ],
       }),
     ]);
   }
