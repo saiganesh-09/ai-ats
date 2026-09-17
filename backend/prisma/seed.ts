@@ -232,9 +232,117 @@ async function main() {
     },
   });
 
-  console.log('Seeded: 1 company, 4 staff users, 3 candidates, 3 jobs, 5 applications');
-  console.log('Logins (all password123): admin@acme.com rita@acme.com henry@acme.com super@ats.dev carol@example.com dave@example.com erin@example.com');
-  console.log('Company invite code: acme-join-2026');
+  // --- second tenant: proves multi-tenancy + fills the public directory ---
+  const techNova = await prisma.company.create({
+    data: { name: 'TechNova', inviteCode: 'technova-join-2026' },
+  });
+  const tnRecruiter = await prisma.user.create({
+    data: {
+      email: 'sam@technova.io', fullName: 'Sam Staffer', passwordHash,
+      role: Role.RECRUITER, companyId: techNova.id,
+    },
+  });
+  const tnJobs = [
+    {
+      title: 'Full Stack Developer', location: 'San Francisco, CA',
+      description: 'React + Node across the stack. TypeScript, PostgreSQL, GraphQL, Docker.',
+      requirements: 'React, Node, TypeScript, GraphQL',
+      employmentType: EmploymentType.FULL_TIME,
+      experienceLevel: ExperienceLevel.MID, workMode: WorkMode.HYBRID,
+      salaryMin: 125000, salaryMax: 155000,
+      skills: ['react', 'node', 'typescript', 'graphql'],
+    },
+    {
+      title: 'Data Analyst', location: 'Remote',
+      description: 'Own our metrics layer. SQL, Python, pandas, dashboards for the exec team.',
+      requirements: 'SQL, Python, pandas',
+      employmentType: EmploymentType.CONTRACT,
+      experienceLevel: ExperienceLevel.ENTRY, workMode: WorkMode.REMOTE,
+      salaryMin: 85000, salaryMax: 110000,
+      skills: ['sql', 'python', 'pandas'],
+    },
+    {
+      title: 'DevOps Engineer', location: 'Seattle, WA',
+      description: 'Kubernetes, AWS, CI/CD pipelines, Terraform. On-call rotation.',
+      requirements: 'Kubernetes, AWS, Docker, CI/CD, Linux',
+      employmentType: EmploymentType.FULL_TIME,
+      experienceLevel: ExperienceLevel.SENIOR, workMode: WorkMode.ONSITE,
+      salaryMin: 145000, salaryMax: 185000,
+      skills: ['kubernetes', 'aws', 'docker', 'ci/cd', 'linux'],
+    },
+  ];
+  const createdTnJobs = [];
+  for (const j of tnJobs) {
+    createdTnJobs.push(await prisma.job.create({
+      data: {
+        companyId: techNova.id, recruiterId: tnRecruiter.id,
+        title: j.title, location: j.location,
+        description: j.description, requirements: j.requirements,
+        employmentType: j.employmentType, experienceLevel: j.experienceLevel,
+        workMode: j.workMode, salaryMin: j.salaryMin, salaryMax: j.salaryMax,
+        status: JobStatus.PUBLISHED,
+        skills: {
+          create: await Promise.all(j.skills.map(
+            async (n) => ({ skill: { connect: await upsertSkill(n) } }),
+          )),
+        },
+      },
+    }));
+  }
+
+  // One more candidate + cross-tenant applications so every funnel stage has data.
+  const fiona = await prisma.user.create({
+    data: {
+      email: 'fiona@example.com', fullName: 'Fiona Fullstack', passwordHash,
+      role: Role.CANDIDATE,
+      profile: { create: { headline: 'Full-stack dev, React + Node, 4 years' } },
+      experiences: { create: [{ title: 'Full Stack Engineer', company: 'StartupCo', years: 4 }] },
+      educations: { create: [{ degree: 'BS Software Engineering', institution: 'Tech U', year: 2021 }] },
+      skills: {
+        create: await Promise.all(
+          ['react', 'node', 'typescript', 'graphql', 'docker'].map(async (n) => ({
+            skill: { connect: await upsertSkill(n) }, source: 'resume',
+          })),
+        ),
+      },
+    },
+  });
+  const fionaResume = await prisma.resume.create({
+    data: {
+      candidateId: fiona.id, originalFilename: 'fiona-resume.txt',
+      storageKey: `resumes/seed-${fiona.id}.txt`,
+      rawText: 'Fiona Fullstack\nReact, Node, TypeScript, GraphQL, Docker. 4 years.',
+      parsed: { summary: 'Full-stack dev', skills: ['react', 'node', 'typescript', 'graphql', 'docker'], experience: [], education: [] },
+    },
+  });
+  const extraApps = [
+    { user: fiona, resume: fionaResume, job: createdTnJobs[0].id, status: ApplicationStatus.HIRED, score: 91 },
+    { user: resumes[0].user, resume: resumes[0].resume, job: createdTnJobs[2].id, status: ApplicationStatus.SCREENING, score: 71 },
+    { user: resumes[1].user, resume: resumes[1].resume, job: createdTnJobs[0].id, status: ApplicationStatus.SCREENING, score: 58 },
+    { user: resumes[2].user, resume: resumes[2].resume, job: createdTnJobs[1].id, status: ApplicationStatus.APPLIED, score: 45 },
+  ];
+  for (const a of extraApps) {
+    await prisma.application.create({
+      data: {
+        jobId: a.job, candidateId: a.user.id, resumeId: a.resume.id,
+        status: a.status, matchScore: a.score,
+        matchDetails: {
+          score: a.score, matched_skills: ['typescript'],
+          missing_skills: [], explanation: 'Seed data — run Score for a real analysis.',
+        },
+      },
+    });
+    await prisma.notification.create({
+      data: {
+        userId: a.user.id, type: 'application.status',
+        payload: { status: a.status },
+      },
+    });
+  }
+
+  console.log('Seeded: 2 companies, 5 staff users, 4 candidates, 6 published jobs, 9 applications');
+  console.log('Logins (all password123): admin@acme.com rita@acme.com henry@acme.com super@ats.dev sam@technova.io carol@example.com dave@example.com erin@example.com fiona@example.com');
+  console.log('Company invite codes: acme-join-2026, technova-join-2026');
 }
 
 main()

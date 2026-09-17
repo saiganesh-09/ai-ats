@@ -17,6 +17,15 @@ import {
 
 const ALL = '__all__' // base-ui Select clears with null; sentinel keeps filters explicit
 
+// Display labels for the filter selects — base-ui SelectValue shows the raw
+// value when an item label can't be resolved, so map it ourselves.
+const L: Record<string, Record<string, string>> = {
+  type: { [ALL]: 'Any type', FULL_TIME: 'Full-time', PART_TIME: 'Part-time', CONTRACT: 'Contract', INTERNSHIP: 'Internship' },
+  mode: { [ALL]: 'Any mode', REMOTE: 'Remote', HYBRID: 'Hybrid', ONSITE: 'On-site' },
+  level: { [ALL]: 'Any level', ENTRY: 'Entry', MID: 'Mid', SENIOR: 'Senior', LEAD: 'Lead' },
+  posted: { [ALL]: 'Any time', '7': 'Past week', '30': 'Past month', '90': 'Past 3 months' },
+}
+
 function useDebounced<T>(value: T, ms = 350) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -76,7 +85,7 @@ export default function JobBoard() {
       {/* filter row — every one maps to a SQL WHERE clause server-side */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Select value={filters.employmentType ?? ALL} onValueChange={(v) => set('employmentType', v === ALL ? undefined : v)}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue>{(v: string) => L.type[v] ?? 'Type'}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Any type</SelectItem>
             <SelectItem value="FULL_TIME">Full-time</SelectItem>
@@ -86,7 +95,7 @@ export default function JobBoard() {
           </SelectContent>
         </Select>
         <Select value={filters.workMode ?? ALL} onValueChange={(v) => set('workMode', v === ALL ? undefined : v)}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Work mode" /></SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue>{(v: string) => L.mode[v] ?? 'Mode'}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Any mode</SelectItem>
             <SelectItem value="REMOTE">Remote</SelectItem>
@@ -95,7 +104,7 @@ export default function JobBoard() {
           </SelectContent>
         </Select>
         <Select value={filters.experienceLevel ?? ALL} onValueChange={(v) => set('experienceLevel', v === ALL ? undefined : v)}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Level" /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue>{(v: string) => L.level[v] ?? 'Level'}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Any level</SelectItem>
             <SelectItem value="ENTRY">Entry</SelectItem>
@@ -108,7 +117,7 @@ export default function JobBoard() {
           value={String(filters.postedWithin ?? ALL)}
           onValueChange={(v) => set('postedWithin', v === ALL ? undefined : Number(v))}
         >
-          <SelectTrigger className="w-40"><SelectValue placeholder="Posted" /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue>{(v: string) => L.posted[v] ?? 'Posted'}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Any time</SelectItem>
             <SelectItem value="7">Past week</SelectItem>
