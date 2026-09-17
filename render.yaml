@@ -1,0 +1,26 @@
+# Render Blueprint — one-click backend deploy for https://render.com
+# New → Blueprint → point at this repo → Render reads this file.
+services:
+  - type: web
+    name: ai-ats-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/src/main.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false        # paste your Neon connection string
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "30"
+      - key: CORS_ORIGIN
+        sync: false        # paste your Vercel URL, e.g. https://ai-ats.vercel.app
+      - key: OPENAI_API_KEY
+        sync: false        # empty → deterministic mock AI (fine for demo)
+      - key: NODE_VERSION
+        value: "22"
