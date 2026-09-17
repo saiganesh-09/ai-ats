@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { User } from '@prisma/client';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public } from '../common/decorators';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
@@ -17,7 +18,9 @@ import { LoginDto, RegisterDto } from './dto';
 export class AuthController {
   constructor(private auth: AuthService) {}
 
+  // Brute-force targets get 5/min instead of the global 100/min.
   @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.auth.register(dto);
@@ -25,6 +28,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
@@ -33,6 +37,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('refresh')
   @HttpCode(200)
   refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Building2, ChevronLeft, ChevronRight, MapPin, Search, X } from 'lucide-react'
 import { api } from '@/lib/endpoints'
+import { ErrorState } from '@/components/ErrorState'
 import type { JobSearchParams } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ export default function JobBoard() {
 
   useEffect(() => setPage(1), [filters]) // any filter change resets pagination
 
-  const { data, isLoading, isPlaceholderData } = useQuery({
+  const { data, isLoading, isPlaceholderData, isError, error, refetch } = useQuery({
     queryKey: ['jobs', query],
     queryFn: () => api.listJobs(query),
     placeholderData: keepPreviousData, // smooth pagination — no flicker
@@ -136,6 +137,7 @@ export default function JobBoard() {
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-40" />)}
+        {isError && <ErrorState message={error.message} onRetry={() => refetch()} />}
         {data?.items.map((job) => (
           <Link key={job.id} href={`/jobs/${job.id}`}>
             <Card className="h-full transition hover:border-primary/50">

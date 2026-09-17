@@ -5,6 +5,7 @@ import { ArrowRight, Bell, Bookmark, Calendar, FileText, Send, Sparkles } from '
 import { api } from '@/lib/endpoints'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/badges'
+import { ErrorState } from '@/components/ErrorState'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -13,7 +14,15 @@ export default function Dashboard() {
   const { data: apps } = useQuery({ queryKey: ['applications'], queryFn: api.myApplications })
   const { data: resumes } = useQuery({ queryKey: ['resumes'], queryFn: api.myResumes })
   const { data: interviews } = useQuery({ queryKey: ['interviews'], queryFn: api.myInterviews })
-  const { data: dash } = useQuery({ queryKey: ['candidate-dashboard'], queryFn: api.candidateDashboard })
+  const { data: dash, isError, error, refetch } = useQuery({ queryKey: ['candidate-dashboard'], queryFn: api.candidateDashboard })
+
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <ErrorState message={error.message} onRetry={() => refetch()} />
+      </div>
+    )
+  }
 
   const upcoming = interviews?.filter((i) => new Date(i.scheduledAt) >= new Date()) ?? []
 

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { StringValue } from 'ms';
 import { ActivityModule } from './activity/activity.module';
 import { AdminModule } from './admin/admin.module';
@@ -26,6 +27,8 @@ import { StorageModule } from './storage/storage.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(), // powers the interview-reminder cron
+    // Global rate limit: 100 req/min/IP. Auth endpoints override tighter.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET ?? 'dev-secret',
@@ -51,8 +54,8 @@ import { StorageModule } from './storage/storage.module';
     AdminModule,
   ],
   providers: [
-    // Guards run globally in this order: authenticate, then authorize.
-    // Public routes opt out via @Public(); role-restricted via @Roles().
+    // Guards run globally in this order: rate-limit, authenticate, authorize.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

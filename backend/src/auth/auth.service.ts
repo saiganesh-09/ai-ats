@@ -87,10 +87,12 @@ export class AuthService {
 
     res.cookie(REFRESH_COOKIE, rawRefresh, {
       httpOnly: true, // not readable from JS — XSS can't steal it
-      sameSite: 'lax',
+      sameSite: 'lax', // CSRF protection for the only cookie we send
       secure: process.env.NODE_ENV === 'production',
       maxAge: REFRESH_DAYS * 86400_000,
-      path: '/',
+      // Scoped to /api/auth — the token never travels to other routes,
+      // so a CSRF-forged request elsewhere can't even carry it.
+      path: '/api/auth',
     });
 
     return { accessToken, user: this.publicUser(user) };
@@ -124,7 +126,7 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
     }
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
     return { ok: true };
   }
 

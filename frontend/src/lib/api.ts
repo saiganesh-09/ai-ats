@@ -19,6 +19,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code?: string, // error.code from the {success:false} envelope
   ) {
     super(message)
   }
@@ -58,8 +59,15 @@ async function rawRequest<T>(path: string, options: RequestInit = {}): Promise<T
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    const msg = (body as { message?: string | string[] }).message
-    throw new ApiError(res.status, Array.isArray(msg) ? msg.join(', ') : (msg ?? `Request failed (${res.status})`))
+    // New contract: {success:false, error:{code,message}} — fall back to the
+    // old NestJS shape for resilience.
+    const env = (body as { error?: { code?: string; message?: string | string[] } }).error
+    const raw = env?.message ?? (body as { message?: string | string[] }).message
+    throw new ApiError(
+      res.status,
+      Array.isArray(raw) ? raw.join(', ') : (raw ?? `Request failed (${res.status})`),
+      env?.code,
+    )
   }
   return (res.status === 204 ? undefined : await res.json()) as T
 }
