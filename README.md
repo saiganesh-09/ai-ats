@@ -1,5 +1,6 @@
 # AI ATS — AI-Powered Applicant Tracking System
 
+[![CI](https://github.com/saiganesh-09/ai-ats/actions/workflows/ci.yml/badge.svg)](https://github.com/saiganesh-09/ai-ats/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js_16-000?logo=next.js&logoColor=white)
 ![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
