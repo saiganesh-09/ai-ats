@@ -1,0 +1,275 @@
+// AI ATS database schema — Prisma is the source of truth.
+// `npx prisma migrate dev` diffs this file against the DB and generates SQL.
+// Convention: camelCase in TypeScript, snake_case in Postgres (@map/@@map).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CANDIDATE
+  RECRUITER
+  HIRING_MANAGER
+  ADMIN
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  SHORTLISTED
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  fullName      String   @map("full_name")
+  passwordHash  String   @map("password_hash")
+  role          Role     @default(CANDIDATE)
+  isActive      Boolean  @default(true) @map("is_active")
+  isSuperadmin  Boolean  @default(false) @map("is_superadmin")
+  companyId     Int?     @map("company_id")
+  company       Company? @relation(fields: [companyId], references: [id])
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  profile               Profile?
+  resumes               Resume[]
+  jobsPosted            Job[]              @relation("JobRecruiter")
+  jobsManaged           Job[]              @relation("JobHiringManager")
+  applications          Application[]      @relation("CandidateApplications")
+  assignedApplications  Application[]      @relation("AssignedRecruiter")
+  savedJobs             SavedJob[]
+  notifications         Notification[]
+  notes                 Note[]
+  feedback              Feedback[]
+  interviewsScheduled   Interview[]
+  reports               Report[]
+  refreshTokens         RefreshToken[]
+  activityLogs          ActivityLog[]
+
+  @@map("users")
+}
+
+model Company {
+  id         Int      @id @default(autoincrement())
+  name       String
+  inviteCode String   @unique @map("invite_code")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  users User[]
+  jobs  Job[]
+
+  @@map("companies")
+}
+
+model Profile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline       String?
+  skills         String[] // real Postgres text[] — queryable array column
+  experience     Json     @default("[]") // [{title, company, years, description}]
+  education      Json     @default("[]") // [{degree, institution, year}]
+  certifications Json     @default("[]") // [{name, issuer, year}]
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}
+
+model Job {
+  id              Int       @id @default(autoincrement())
+  companyId       Int       @map("company_id")
+  company         Company   @relation(fields: [companyId], references: [id])
+  recruiterId     Int       @map("recruiter_id")
+  recruiter       User      @relation("JobRecruiter", fields: [recruiterId], references: [id])
+  hiringManagerId Int?      @map("hiring_manager_id")
+  hiringManager   User?     @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
+  title           String
+  location        String?
+  description     String
+  requirements    String?
+  status          JobStatus @default(DRAFT)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  applications Application[]
+  savedBy      SavedJob[]
+  reports      Report[]
+
+  @@index([companyId])
+  @@index([hiringManagerId])
+  @@map("jobs")
+}
+
+model Resume {
+  id               Int      @id @default(autoincrement())
+  candidateId      Int      @map("candidate_id")
+  candidate        User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  originalFilename String   @map("original_filename")
+  storageKey       String   @map("storage_key") // object-storage key, not a path
+  rawText          String   @map("raw_text")
+  parsed           Json?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  applications Application[]
+
+  @@index([candidateId])
+  @@map("resumes")
+}
+
+model Application {
+  id                  Int               @id @default(autoincrement())
+  jobId               Int               @map("job_id")
+  job                 Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId         Int               @map("candidate_id")
+  candidate           User              @relation("CandidateApplications", fields: [candidateId], references: [id])
+  resumeId            Int               @map("resume_id")
+  resume              Resume            @relation(fields: [resumeId], references: [id])
+  assignedRecruiterId Int?              @map("assigned_recruiter_id")
+  assignedRecruiter   User?             @relation("AssignedRecruiter", fields: [assignedRecruiterId], references: [id])
+  coverNote           String?           @map("cover_note")
+  status              ApplicationStatus @default(APPLIED)
+  matchScore          Float?            @map("match_score")
+  matchDetails        Json?             @map("match_details")
+  aiSummary           String?           @map("ai_summary")
+  createdAt           DateTime          @default(now()) @map("created_at")
+
+  notes      Note[]
+  feedback   Feedback[]
+  interviews Interview[]
+
+  @@unique([jobId, candidateId]) // "apply once" enforced at the DB level
+  @@index([candidateId])
+  @@index([jobId, status])
+  @@map("applications")
+}
+
+model Note {
+  id            Int         @id @default(autoincrement())
+  applicationId Int         @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  authorId      Int         @map("author_id")
+  author        User        @relation(fields: [authorId], references: [id])
+  text          String
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@map("notes")
+}
+
+model Feedback {
+  id            Int         @id @default(autoincrement())
+  applicationId Int         @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewId   Int?        @map("interview_id")
+  interview     Interview?  @relation(fields: [interviewId], references: [id])
+  authorId      Int         @map("author_id")
+  author        User        @relation(fields: [authorId], references: [id])
+  rating        Int? // 1-5
+  text          String
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@map("feedback")
+}
+
+model Interview {
+  id            Int         @id @default(autoincrement())
+  applicationId Int         @map("application_id")
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  scheduledById Int         @map("scheduled_by_id")
+  scheduledBy   User        @relation(fields: [scheduledById], references: [id])
+  scheduledAt   DateTime    @map("scheduled_at")
+  location      String?
+  link          String?
+  notes         String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  feedback Feedback[]
+
+  @@index([applicationId])
+  @@map("interviews")
+}
+
+model SavedJob {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     Int      @map("job_id")
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, jobId])
+  @@map("saved_jobs")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // e.g. "application.status", "interview.scheduled"
+  payload   Json?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model Report {
+  id         Int          @id @default(autoincrement())
+  reporterId Int          @map("reporter_id")
+  reporter   User         @relation(fields: [reporterId], references: [id])
+  jobId      Int          @map("job_id")
+  job        Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reason     String
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  actorId    Int?     @map("actor_id")
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String // e.g. "user.registered", "job.published"
+  entityType String?  @map("entity_type")
+  entityId   Int?     @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("activity_log")
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @map("token_hash") // we store a hash, never the raw token
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}

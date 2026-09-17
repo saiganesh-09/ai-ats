@@ -1,50 +1,113 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth'
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { Bell, Briefcase, LogOut } from 'lucide-react'
+import { api } from '@/lib/endpoints'
+import { homeFor, useAuth } from '@/lib/auth'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-export default function Navbar() {
+const NAV_LINKS: Record<string, { href: string; label: string }[]> = {
+  CANDIDATE: [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/dashboard/applications', label: 'Applications' },
+    { href: '/dashboard/resumes', label: 'Resumes' },
+    { href: '/dashboard/profile', label: 'Profile' },
+    { href: '/dashboard/saved', label: 'Saved' },
+  ],
+  RECRUITER: [
+    { href: '/recruiter', label: 'Dashboard' },
+    { href: '/recruiter/jobs', label: 'Jobs' },
+    { href: '/recruiter/company', label: 'Company' },
+  ],
+  HIRING_MANAGER: [{ href: '/hiring', label: 'My Jobs' }],
+  ADMIN: [
+    { href: '/admin', label: 'Dashboard' },
+    { href: '/admin/users', label: 'Users' },
+    { href: '/admin/companies', label: 'Companies' },
+    { href: '/admin/reports', label: 'Reports' },
+    { href: '/admin/activity', label: 'Activity' },
+  ],
+}
+
+export function Navbar() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const pathname = usePathname()
+  const { data: unread } = useQuery({
+    queryKey: ['unread'],
+    queryFn: api.unreadCount,
+    enabled: !!user,
+    refetchInterval: 30_000, // poll for new notifications
+  })
+
+  const links = user
+    ? (user.isSuperadmin ? NAV_LINKS.ADMIN : (NAV_LINKS[user.role] ?? []))
+    : []
 
   return (
-    <nav className="border-b bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-        <Link to="/" className="text-lg font-bold text-indigo-600">
-          AI ATS
+    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4">
+        <Link href="/" className="flex items-center gap-2 font-bold text-primary">
+          <Briefcase className="h-5 w-5" /> AI ATS
         </Link>
-        <div className="flex items-center gap-4 text-sm">
-          <Link to="/" className="hover:text-indigo-600">Jobs</Link>
-          {user?.role === 'candidate' && (
-            <>
-              <Link to="/resumes" className="hover:text-indigo-600">My Resumes</Link>
-              <Link to="/applications" className="hover:text-indigo-600">My Applications</Link>
-            </>
-          )}
-          {user?.role === 'recruiter' && (
-            <Link to="/recruiter/jobs" className="hover:text-indigo-600">My Postings</Link>
-          )}
+        <nav className="flex flex-1 items-center gap-1 text-sm">
+          <Link
+            href="/jobs"
+            className={`rounded-md px-3 py-1.5 hover:bg-accent ${pathname.startsWith('/jobs') ? 'bg-accent font-medium' : ''}`}
+          >
+            Jobs
+          </Link>
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`rounded-md px-3 py-1.5 hover:bg-accent ${pathname === l.href ? 'bg-accent font-medium' : ''}`}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-2">
           {user ? (
             <>
-              <span className="text-slate-500">{user.full_name} ({user.role})</span>
-              <button
-                onClick={() => { logout(); navigate('/') }}
-                className="rounded border px-3 py-1 hover:bg-slate-100"
-              >
-                Log out
-              </button>
+              <Link href="/dashboard/notifications" className="relative rounded-md p-2 hover:bg-accent">
+                <Bell className="h-4 w-4" />
+                {!!unread?.count && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                    {unread.count}
+                  </span>
+                )}
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="outline" size="sm">{user.fullName}</Button>} />
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    {user.email}
+                    <Badge variant="secondary" className="ml-2">{user.role}</Badge>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => { window.location.href = homeFor(user) }}>
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="mr-2 h-4 w-4" /> Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>
-              <Link to="/login" className="hover:text-indigo-600">Log in</Link>
-              <Link
-                to="/register"
-                className="rounded bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-700"
-              >
-                Sign up
-              </Link>
+              <Button variant="ghost" size="sm" render={<Link href="/login" />}>Log in</Button>
+              <Button size="sm" render={<Link href="/register" />}>Sign up</Button>
             </>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   )
 }

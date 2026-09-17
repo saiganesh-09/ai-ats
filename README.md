@@ -1,74 +1,74 @@
 # AI ATS — AI-Powered Applicant Tracking System
 
-A full-stack ATS where recruiters post jobs and candidates apply with resumes.
-AI (OpenAI) parses resumes into structured profiles and scores each applicant
-against the job description.
+A production-style SaaS ATS: companies post jobs, candidates apply with
+AI-parsed resumes, recruiters manage a kanban pipeline, hiring managers review
+assigned candidates, and admins moderate the platform.
 
 ## Stack
 
-| Layer      | Technology                          | Why |
-|------------|-------------------------------------|-----|
-| Frontend   | React 19 + TypeScript + Vite        | Type-safe SPA, fast dev server |
-| Styling    | Tailwind CSS v4                     | Utility-first, no custom CSS files |
-| Backend    | FastAPI (Python 3.12)               | Async, auto OpenAPI docs, Pydantic validation |
-| ORM        | SQLAlchemy 2.0 + Alembic            | Industry-standard ORM + versioned migrations |
-| Database   | PostgreSQL 16                       | Relational data, JSONB for AI output |
-| Auth       | JWT (PyJWT) + argon2 (pwdlib)       | Stateless sessions, modern password hashing |
-| AI         | OpenAI API (`gpt-4o-mini`)          | Resume parsing + match scoring, JSON mode |
+| Layer      | Technology | Why |
+|------------|-----------|-----|
+| Frontend   | Next.js 16 (App Router) + React 19 + TypeScript | SSR/SEO for the public job board, one framework for pages + data |
+| UI         | Tailwind v4 + shadcn/ui + Lucide | Accessible component primitives, real SaaS look |
+| Forms      | React Hook Form + Zod | Performant forms with schema validation |
+| Data       | TanStack Query | Server-state caching, invalidation, polling |
+| Charts     | Recharts | Dashboards: funnel, trends, admin analytics |
+| Backend    | NestJS (Node + TypeScript) | Modules, DI, Guards — enforces clean architecture |
+| ORM        | Prisma | Schema-as-source-of-truth + typed client + migrations |
+| Database   | PostgreSQL 16 | Relational core + JSONB for AI output |
+| Auth       | JWT access (15m) + rotating refresh (httpOnly cookie), argon2id | Stateless + revocable sessions |
+| Storage    | Object-storage abstraction (local impl, S3-swappable) | Spec-compliant: files never in DB |
+| AI         | OpenAI `gpt-4o-mini` via service layer | Mock fallback keeps app working offline/free |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system diagrams and
-[docs/DATABASE.md](docs/DATABASE.md) for the schema ERD.
-[docs/INTERVIEW.md](docs/INTERVIEW.md) has talking points for explaining this project.
+Docs: [architecture](docs/ARCHITECTURE.md) · [database + ERD](docs/DATABASE.md) · [interview notes](docs/INTERVIEW.md)
 
 ## Quick start
 
 ```bash
-# 1. Database (one time)
-psql postgres -c "CREATE USER ats_user WITH PASSWORD 'ats_dev_password';"
-psql postgres -c "CREATE DATABASE ai_ats OWNER ats_user;"
+# 1. Postgres running locally (or use docker compose for everything)
+psql postgres -c "CREATE USER ats_user WITH PASSWORD 'ats_dev_password' CREATEDB;"
+psql postgres -c "CREATE DATABASE ai_ats_ts OWNER ats_user;"
 
-# 2. Backend
-cd backend
-uv venv && uv pip install -r requirements.txt   # or: python -m venv .venv && pip install -r requirements.txt
-cp .env.example .env                            # add OPENAI_API_KEY if you have one
-uv run --no-project alembic upgrade head
-uv run --no-project uvicorn app.main:app --reload   # http://localhost:8000/docs
+# 2. API  →  http://localhost:3001/api
+cd backend && npm install && cp .env.example .env   # add OPENAI_API_KEY (optional)
+npx prisma migrate dev && npx prisma db seed
+npm run start:dev
 
-# 3. Frontend (new terminal)
-cd frontend
-npm install
-npm run dev                                     # http://localhost:5173
+# 3. Web  →  http://localhost:3000
+cd frontend && npm install && npm run dev
 ```
 
-No OpenAI key? The app runs in **mock AI mode** — deterministic keyword matching,
-no API calls, no cost. Set `OPENAI_API_KEY` in `backend/.env` to switch to real AI.
+Or everything at once: `docker compose up --build`
 
-## Demo flow
+**Demo logins** (all `password123`, invite code `acme-join-2026`):
+`rita@acme.com` recruiter · `henry@acme.com` hiring manager · `admin@acme.com`
+company admin · `super@ats.dev` platform admin · `carol@example.com` candidate
 
-1. Register as **recruiter** → post a job.
-2. Register as **candidate** → upload a resume (PDF/TXT) → it gets AI-parsed.
-3. Apply to the job with that resume.
-4. Back as the **recruiter** → open the job → click **Score** → see the AI
-   match %, matched/missing skills, and explanation → move the applicant
-   through the pipeline statuses.
+## Roles & access
 
-## Project layout
+| | Candidate | Recruiter | Hiring Manager | Company Admin | Superadmin |
+|---|---|---|---|---|---|
+| Profile, resumes, apply, save | ✓ | | | | |
+| Company jobs & applicants | | ✓ | assigned only | ✓ | ✓ |
+| Pipeline moves, notes, AI tools | | ✓ | feedback | ✓ | ✓ |
+| Members, roles, company jobs | | | | ✓ | ✓ |
+| All companies, moderation, reports | | | | | ✓ |
+
+## Layout
 
 ```
-backend/app/
-├── main.py            # FastAPI app, CORS, router wiring
-├── config.py          # env settings (pydantic-settings)
-├── database.py        # SQLAlchemy engine + session
-├── models.py          # ORM models (the schema)
-├── schemas.py         # Pydantic request/response contracts
-├── security.py        # argon2 hashing + JWT
-├── deps.py            # get_db, get_current_user, require_role
-├── routers/           # auth, jobs, resumes, applications
-└── services/          # resume_parser (PDF→text), ai_service (OpenAI+mock)
+backend/src/
+├── main.ts / app.module.ts      # bootstrap, global guards (JwtAuth → Roles)
+├── common/                      # @Public @Roles @CurrentUser, guards
+├── prisma/                      # global PrismaService
+├── auth/                        # register/login/refresh/logout + rotation
+├── companies/  profiles/  jobs/  resumes/  applications/
+├── interviews/  notifications/  analytics/  admin/
+├── ai/ai.service.ts             # all LLM features + mock fallback
+├── storage/storage.service.ts   # ObjectStorage iface + local impl (S3-ready)
+└── activity/                    # audit log service
 frontend/src/
-├── api.ts             # typed fetch client, JWT injection
-├── auth.tsx           # AuthContext + ProtectedRoute
-├── types.ts           # API contract types
-├── pages/             # JobBoard, JobDetail, Resumes, MyApplications, recruiter/*
-└── components/        # Navbar, badges
+├── lib/        api.ts (fetch+refresh), endpoints.ts (typed calls), auth.tsx, types.ts
+├── components/ Navbar, badges, ui/ (shadcn)
+└── app/        landing, login, register, jobs, dashboard/*, recruiter/*, hiring, admin/*
 ```

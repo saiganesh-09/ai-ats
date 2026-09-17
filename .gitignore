@@ -1,17 +1,20 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-.env
-
-# Uploads (user files, never commit)
-backend/uploads/*
-!backend/uploads/.gitkeep
-
-# Node
+# Dependencies
 node_modules/
+
+# Builds
 dist/
+.next/
+out/
+
+# Env & secrets
+.env
+.env.local
+
+# Local object storage (uploaded resumes)
+backend/storage/
+!backend/storage/.gitkeep
 
 # OS/editor
 .DS_Store
 *.log
+coverage/

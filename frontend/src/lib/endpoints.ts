@@ -1,0 +1,114 @@
+// Typed endpoint wrappers — components call these, never request() directly.
+import { request } from './api'
+import type {
+  ActivityEntry, AdminAnalytics, Application, Company, Dashboard,
+  Interview, Job, MatchDetails, Notification, Profile, Report,
+  Resume, SavedJob, User,
+} from './types'
+
+export const api = {
+  // auth
+  register: (data: { email: string; password: string; fullName: string; role: string }) =>
+    request<{ accessToken: string; user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (email: string, password: string) =>
+    request<{ accessToken: string; user: User }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  me: () => request<User>('/auth/me'),
+
+  // companies
+  createCompany: (name: string) =>
+    request<Company>('/companies', { method: 'POST', body: JSON.stringify({ name }) }),
+  joinCompany: (inviteCode: string) =>
+    request<Company>('/companies/join', { method: 'POST', body: JSON.stringify({ inviteCode }) }),
+  myCompany: () => request<Company | null>('/companies/mine'),
+  setMemberRole: (userId: number, role: string) =>
+    request<User>(`/companies/members/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+
+  // profiles
+  myProfile: () => request<Profile>('/profiles/mine'),
+  updateProfile: (data: Partial<Profile>) =>
+    request<Profile>('/profiles/mine', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // jobs
+  listJobs: (params?: { q?: string; location?: string; sort?: string; page?: number }) => {
+    const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v).map(([k, v]) => [k, String(v)]))
+    return request<Job[]>(`/jobs${qs.size ? `?${qs}` : ''}`)
+  },
+  getJob: (id: number) => request<Job>(`/jobs/${id}`),
+  manageJobs: () => request<Job[]>('/jobs/manage/list'),
+  createJob: (data: { title: string; location?: string; description: string; requirements?: string; hiringManagerId?: number }) =>
+    request<Job>('/jobs', { method: 'POST', body: JSON.stringify(data) }),
+  updateJob: (id: number, data: Partial<Job>) =>
+    request<Job>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  jobAction: (id: number, action: 'publish' | 'unpublish' | 'close') =>
+    request<Job>(`/jobs/${id}/${action}`, { method: 'POST' }),
+  analyzeJob: (id: number) => request<Record<string, unknown>>(`/jobs/${id}/analyze`, { method: 'POST' }),
+  saveJob: (id: number) => request<SavedJob>(`/jobs/${id}/save`, { method: 'POST' }),
+  unsaveJob: (id: number) => request<void>(`/jobs/${id}/save`, { method: 'DELETE' }),
+  savedJobs: () => request<SavedJob[]>('/jobs/saved/mine'),
+  reportJob: (id: number, reason: string) =>
+    request<Report>(`/jobs/${id}/report`, { method: 'POST', body: JSON.stringify({ reason }) }),
+
+  // resumes
+  uploadResume: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request<Resume>('/resumes', { method: 'POST', body: form })
+  },
+  myResumes: () => request<Resume[]>('/resumes/mine'),
+  deleteResume: (id: number) => request<void>(`/resumes/${id}`, { method: 'DELETE' }),
+
+  // applications
+  apply: (jobId: number, resumeId: number, coverNote?: string) =>
+    request<Application>('/applications', { method: 'POST', body: JSON.stringify({ jobId, resumeId, coverNote }) }),
+  myApplications: () => request<Application[]>('/applications/mine'),
+  withdraw: (id: number) => request<Application>(`/applications/${id}/withdraw`, { method: 'POST' }),
+  pipeline: (jobId: number, params?: { q?: string; status?: string; sort?: string }) => {
+    const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v) as [string, string][])
+    return request<Application[]>(`/applications/job/${jobId}${qs.size ? `?${qs}` : ''}`)
+  },
+  applicationDetail: (id: number) => request<Application>(`/applications/${id}`),
+  setStatus: (id: number, status: string) =>
+    request<Application>(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  assign: (id: number, recruiterId: number) =>
+    request<Application>(`/applications/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ recruiterId }) }),
+  addNote: (id: number, text: string) =>
+    request<Application>(`/applications/${id}/notes`, { method: 'POST', body: JSON.stringify({ text }) }),
+  addFeedback: (id: number, text: string, rating?: number, interviewId?: number) =>
+    request<Application>(`/applications/${id}/feedback`, { method: 'POST', body: JSON.stringify({ text, rating, interviewId }) }),
+  scoreApplication: (id: number) =>
+    request<MatchDetails>(`/applications/${id}/score`, { method: 'POST' }),
+  summarizeApplication: (id: number) =>
+    request<{ summary: string }>(`/applications/${id}/summarize`, { method: 'POST' }),
+  generateQuestions: (id: number) =>
+    request<{ questions: string[] }>(`/applications/${id}/questions`, { method: 'POST' }),
+
+  // interviews
+  scheduleInterview: (data: { applicationId: number; scheduledAt: string; location?: string; link?: string; notes?: string }) =>
+    request<Interview>('/interviews', { method: 'POST', body: JSON.stringify(data) }),
+  myInterviews: () => request<Interview[]>('/interviews/mine'),
+
+  // notifications
+  notifications: () => request<Notification[]>('/notifications/mine'),
+  unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
+  markRead: (id: number) => request<void>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllRead: () => request<void>('/notifications/read-all', { method: 'PATCH' }),
+
+  // analytics
+  dashboard: () => request<Dashboard>('/analytics/dashboard'),
+
+  // admin
+  adminAnalytics: () => request<AdminAnalytics>('/admin/analytics'),
+  adminUsers: (params?: { q?: string; role?: string }) => {
+    const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v) as [string, string][])
+    return request<User[]>(`/admin/users${qs.size ? `?${qs}` : ''}`)
+  },
+  setUserStatus: (id: number, isActive: boolean) =>
+    request<User>(`/admin/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+  adminCompanies: () => request<(Company & { _count: { users: number; jobs: number } })[]>('/admin/companies'),
+  adminDeleteJob: (id: number) => request<{ ok: boolean }>(`/admin/jobs/${id}`, { method: 'DELETE' }),
+  adminReports: () => request<Report[]>('/admin/reports'),
+  resolveReport: (id: number, status: 'RESOLVED' | 'DISMISSED') =>
+    request<Report>(`/admin/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminActivity: () => request<ActivityEntry[]>('/admin/activity'),
+}

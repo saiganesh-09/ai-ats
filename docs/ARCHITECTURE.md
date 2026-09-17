@@ -4,83 +4,108 @@
 
 ```mermaid
 flowchart LR
-    subgraph Browser
-        SPA[React SPA<br/>Vite + TS + Tailwind]
+    subgraph Client
+        WEB[Next.js App<br/>React 19 + TS + Tailwind<br/>shadcn · RHF+Zod · TanStack Query]
     end
 
-    subgraph Server
-        API[FastAPI<br/>REST + JWT auth]
-        AI[ai_service<br/>parse + score]
-        PARSER[resume_parser<br/>PDF → text]
+    subgraph API[NestJS API]
+        GUARD[Global Guards<br/>JwtAuthGuard → RolesGuard]
+        CTRL[Controllers<br/>one per domain]
+        SVC[Services<br/>Prisma · AI · Storage · Activity]
     end
 
-    DB[(PostgreSQL<br/>users · jobs · resumes · applications)]
-    OPENAI[(OpenAI API<br/>gpt-4o-mini)]
+    DB[(PostgreSQL<br/>13 tables)]
+    OPENAI[(OpenAI<br/>gpt-4o-mini)]
+    FS[(Object storage<br/>local now · S3 later)]
 
-    SPA -- "HTTP/JSON<br/>Authorization: Bearer <jwt>" --> API
-    API --> SQL[SQLAlchemy ORM] --> DB
-    API --> PARSER
-    API --> AI --> OPENAI
-    AI -.->|no key / API failure| MOCK[mock heuristics]
+    WEB -- "HTTP/JSON · Bearer JWT<br/>refresh via httpOnly cookie" --> GUARD
+    GUARD --> CTRL --> SVC
+    SVC --> DB
+    SVC --> OPENAI
+    SVC --> FS
 ```
 
-## Request lifecycle: applying to a job
+## Why NestJS (spec asked for justification)
+
+Express leaves architecture to convention — you'd hand-roll routing
+structure, auth middleware, DI, and validation. NestJS gives all of it as
+first-class concepts, which is what "production-style" actually means:
+
+- **Modules** = bounded contexts (auth, applications, admin…). The app module
+  is a dependency graph you can read top-to-bottom.
+- **Guards** = RBAC as infrastructure, not per-route ifs. `JwtAuthGuard` +
+  `RolesGuard` run globally; routes opt out with `@Public()` or restrict with
+  `@Roles()`. This maps exactly to "Hiring managers should NOT have
+  unrestricted admin access" — it's enforced in two lines of metadata.
+- **DI** = swappable providers. `STORAGE` token injects `LocalStorageService`
+  today, `S3StorageService` tomorrow — zero call-site changes. Same for the AI
+  service's OpenAI/mock switch.
+- **ValidationPipe + DTOs** = class-validator schemas at the edge, the backend
+  equivalent of the spec's Zod requirement on the frontend.
+
+## Auth flow
 
 ```mermaid
 sequenceDiagram
-    participant C as Candidate (React)
-    participant API as FastAPI
-    participant DB as PostgreSQL
-    participant AI as OpenAI
+    participant W as Next.js
+    participant A as NestJS
+    participant DB as Postgres
 
-    C->>API: POST /resumes (PDF file, JWT)
-    API->>API: resume_parser: extract text (pypdf)
-    API->>AI: parse_resume(text) → JSON
-    AI-->>API: {summary, skills, experience, education}
-    API->>DB: INSERT resume (raw_text + parsed JSONB)
-    API-->>C: 201 + parsed profile
+    W->>A: POST /auth/login
+    A->>A: argon2.verify(hash)
+    A->>DB: INSERT refresh_tokens (sha256(token))
+    A-->>W: accessToken (15m) + Set-Cookie: ats_rt (httpOnly, 30d)
 
-    C->>API: POST /applications {job_id, resume_id}
-    API->>DB: INSERT application (unique job+candidate)
-    API-->>C: 201
+    Note over W: access token expires…
+    W->>A: POST /auth/refresh (cookie)
+    A->>DB: find hash → revoke old token → issue new (ROTATION)
+    A-->>W: new accessToken + new cookie
 
-    Note over C,AI: Later, a recruiter reviews…
-    C->>API: POST /applications/:id/score (recruiter JWT)
-    API->>AI: score_match(parsed_resume, job)
-    AI-->>API: {score, matched, missing, explanation}
-    API->>DB: UPDATE application.match_score
+    W->>A: GET /applications/mine (Bearer)
+    A->>A: JwtAuthGuard: verify → load user → reject if !isActive
+    A->>A: RolesGuard: role ∈ @Roles()?
+    A->>DB: query scoped to user/company
 ```
 
-## Backend layering
+Rotation means a stolen refresh token dies after one use (the legitimate
+client's next refresh would fail → detection signal). Only the **hash** is
+stored — like passwords, tokens are never recoverable from the DB.
 
+## Authorization layers
+
+1. **Role** — `@Roles(RECRUITER, ADMIN)` on controllers.
+2. **Tenant scope** — every staff query filters `companyId === user.companyId`.
+3. **Row scope** — hiring managers additionally need `job.hiringManagerId ===
+   user.id` (`staffJob()` in applications controller).
+4. **Ownership** — candidates only touch their own resumes/applications.
+5. **Superadmin** — `isSuperadmin` flag bypasses role+scope checks (platform
+   staff). Separate from role so it's auditable.
+
+## Storage abstraction
+
+```ts
+interface ObjectStorage { put(key, data); get(key): Buffer }
 ```
-routers/      HTTP concerns only: parse request, call service/DB, shape response
-deps.py       cross-cutting auth: JWT decode → load user → role check
-services/     business logic that isn't HTTP or SQL: AI calls, file parsing
-models.py     tables; schemas.py    wire contracts — never the same objects
-```
 
-The rule: routers never contain business logic, services never know about HTTP.
-This is what makes `ai_service` swappable between OpenAI and the mock — the
-router calls `ai_service.parse_resume()` and doesn't care which runs.
+Callers deal in opaque keys (`resumes/<uuid>.pdf`) — the same addressing model
+S3 uses. Local disk implements it now; an S3 provider is a new class + one
+provider registration. Downloads stream through the API (auth-checked) — could
+later become presigned-URL redirects.
 
-## Auth model
+## AI boundary
 
-- Passwords hashed with **argon2id** (pwdlib) — memory-hard, GPU-resistant.
-- Login issues a **JWT** signed with HS256, containing `sub` (user id), `role`,
-  `exp`. No server-side session storage needed.
-- Every protected request: `HTTPBearer` → decode JWT → load user from DB →
-  `require_role` checks `recruiter` vs `candidate`.
-- Authorization is enforced **server-side per resource**: recruiters can only
-  see/modify their own jobs (`_owned_job`) and applications to them; candidates
-  can only use their own resumes.
+One `AiService`, five features — `parseResume`, `scoreMatch`,
+`summarizeCandidate`, `generateInterviewQuestions`, `analyzeJobDescription`.
+Every method: try OpenAI JSON-mode → **fall back to deterministic mock** on
+missing key or API failure. The app never hard-depends on an external service.
 
 ## Failure design
 
 | Failure | Behavior |
 |---|---|
-| No `OPENAI_API_KEY` | Mock parser/scorer — app fully usable offline |
-| OpenAI call throws | Falls back to mock result (AI degrades, app survives) |
-| Duplicate application | DB unique constraint → 409, never a partial write |
-| Scanned/image PDF | `UnsupportedFileError` → 422 with clear message |
-| Recruiter hits another's job | 403 ownership check on every mutating route |
+| No `OPENAI_API_KEY` | Mock AI — fully functional demo |
+| OpenAI error | Falls back per-call, logs warning |
+| Expired access token | Silent refresh + retry (client) |
+| Suspended user | Blocked at login AND every guarded request |
+| Duplicate apply | `@@unique(jobId,candidateId)` → 409 |
+| Notification write fails | Never fails the request (audit-safe logging) |

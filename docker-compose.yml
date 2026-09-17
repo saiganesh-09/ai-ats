@@ -1,0 +1,43 @@
+# Full-stack dev environment: Postgres + NestJS API + Next.js frontend.
+# One command: docker compose up --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ats_user
+      POSTGRES_PASSWORD: ats_dev_password
+      POSTGRES_DB: ai_ats
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ats_user -d ai_ats"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://ats_user:ats_dev_password@db:5432/ai_ats
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL_DAYS: "30"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: gpt-4o-mini
+      STORAGE_DIR: storage
+      CORS_ORIGIN: http://localhost:3000
+      PORT: "3001"
+    ports: ["3001:3001"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:

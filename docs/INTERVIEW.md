@@ -1,67 +1,78 @@
 # Interview Talking Points
 
-Use these to explain the project. Each is phrased as "what" + "why" — that's
-what interviewers probe for.
+## 60-second pitch
 
-## The 60-second pitch
+> "I built a multi-tenant SaaS applicant tracking system in TypeScript
+> end-to-end: a Next.js frontend and a NestJS API over PostgreSQL with Prisma.
+> It has real RBAC — four roles plus a platform superadmin — with access
+> enforced at three levels: role, company tenancy, and per-job assignment.
+> Auth is short-lived JWT access tokens with rotating refresh tokens stored
+> hashed in the database. AI features — resume parsing, match scoring,
+> candidate summaries, interview questions — sit behind one service with a
+> deterministic mock fallback, so the app never hard-depends on OpenAI.
+> Files go through an object-storage abstraction that's local now and S3 later."
 
-> "I built a full-stack AI applicant tracking system. Recruiters post jobs,
-> candidates upload resumes which get parsed by an LLM into structured profiles,
-> and each application gets an AI match score with matched/missing skills.
-> It's a React/TypeScript frontend, FastAPI backend, PostgreSQL with Alembic
-> migrations, JWT auth with role-based access, and the AI layer has a mock
-> fallback so it degrades gracefully without an API key."
+## Why NestJS over Express?
 
-## Questions you'll get + good answers
+Express gives you a router; NestJS gives you an architecture. RBAC is two
+global guards + decorators, not middleware soup. DI makes the storage and AI
+providers swappable by changing one registration. And modules match the
+domain boundaries, which is what interviewers mean by "clean architecture."
 
-**"Why FastAPI over Flask/Django?"**
-Async-first, type-hint-driven validation via Pydantic, and it generates OpenAPI
-docs automatically — the API is self-documenting at `/docs`.
+## Questions + answers
 
-**"How does auth work?"**
-JWT bearer tokens. Login returns a signed token with the user id + role.
-Every protected route decodes it through a FastAPI dependency, loads the user
-from Postgres, and a `require_role` dependency enforces recruiter vs candidate.
-Passwords are hashed with argon2id — memory-hard, so brute-force is expensive.
+**"Explain your RBAC."**
+Four role checks, actually five layers: (1) global `JwtAuthGuard` authenticates
+and loads the user — suspended users die here; (2) `RolesGuard` checks
+`@Roles()` metadata; (3) tenant scoping — all staff queries filter by
+`companyId`; (4) row scoping — hiring managers only touch jobs where
+`hiringManagerId = them`; (5) ownership — candidates only their own records.
+Superadmin is a separate flag, not a role, so platform access stays auditable.
 
-**"Why JWT instead of sessions?"**
-Stateless — no session table or Redis needed, scales horizontally. Trade-off I
-know: tokens can't be revoked before expiry without a blocklist, and
-localStorage storage is XSS-exposed — production would use httpOnly cookies.
+**"How do your tokens work?"**
+Login issues a 15-minute access JWT plus a 30-day refresh token in an httpOnly
+cookie. Only the SHA-256 hash of the refresh token is stored. Every refresh
+rotates: old token revoked, new pair issued — a stolen token works once. The
+frontend retries a failed request after a silent refresh, so users never notice.
 
-**"Walk me through the database."**
-Four tables. `applications` is the interesting one — a many-to-many join
-between users and jobs carrying its own state (pipeline status, AI score,
-resume used). Unique constraint on (job_id, candidate_id) prevents duplicate
-applications at the DB level. AI output goes in JSONB columns because it's
-semi-structured; everything else is normalized.
+**"Talk me through the schema."**
+Thirteen tables around a companies/users/jobs/applications core.
+`applications` is a join table with a state machine — 8 statuses, a
+unique(job,candidate) constraint for apply-once, and AI fields (score,
+match details, summary). JSONB for AI output and profile lists since the
+shape evolves; real Postgres arrays for skills since they stay queryable.
+`activity_log` is the audit trail; `refresh_tokens` enables rotation.
 
-**"How does the AI part work?"**
-Two functions behind a service module: `parse_resume` turns PDF text into
-structured JSON (skills/experience/education), `score_match` compares a parsed
-resume to a job and returns score + matched/missing skills + explanation. Both
-use OpenAI's JSON mode with strict prompts. If there's no API key or the call
-fails, a deterministic keyword-matching mock runs instead — the AI is an
-enhancement, not a hard dependency.
+**"What does 'object storage abstraction' buy you?"**
+Code only sees `put(key, bytes)`/`get(key)` — same model as S3. Today it's
+local disk behind a `STORAGE` DI token; production swaps in an S3 provider
+with zero call-site changes. Files never touch Postgres — the DB keeps a key,
+extracted text, and parsed JSON.
 
-**"How would you scale it?"**
-- Resume parsing/scoring → background queue (Celery/ARQ) — right now it's
-  synchronous in the request, which blocks for a second or two
-- Files → S3 instead of local disk
-- Matching at scale → embeddings + pgvector for semantic search instead of
-  per-request LLM calls (cheaper, enables "find similar candidates")
-- Rate limiting + caching job listings
+**"How is the AI designed?"**
+One `AiService`, five operations, strict JSON-mode prompts. Every method wraps
+OpenAI in a try→mock path: no key or a failed call produces deterministic
+keyword-heuristic results instead of an error. Consequence: the demo works
+offline, tests don't spend money, and an OpenAI outage degrades rather than
+breaks the product.
 
-**"What would you add with more time?"**
-Tests (pytest + httpx for the API), email notifications on status change,
-candidate-facing score feedback, interview scheduling, full-text search on
-resumes via Postgres `tsvector`.
+**"Scaling next steps?"**
+- AI calls → job queue (BullMQ) — parsing/scoring currently blocks the request
+- pgvector embeddings for semantic matching + "similar candidates"
+- Cursor pagination on pipelines, Redis cache on the public job board
+- Presigned S3 URLs for downloads instead of streaming through the API
+- Rate limiting (ThrottlerModule) + helmet; OpenAPI via @nestjs/swagger
 
-## Concepts this project demonstrates
+**"What was the hardest part?"**
+The refresh-rotation + silent-retry dance: the client holds the access token,
+the cookie holds the refresh token, and a 401 has to refresh-then-retry
+exactly once (concurrent 401s share one refresh promise). Also the RBAC
+matrix — role checks are easy; role × tenant × row-assignment scoping is
+where the real work was.
 
-- REST API design (resource-oriented, proper status codes)
-- ORM + migrations (SQLAlchemy 2.0 typed models, Alembic)
-- Role-based access control enforced server-side
-- LLM integration: prompt engineering, structured JSON output, fallback strategy
-- React: Context for auth state, protected routes, controlled forms
-- TypeScript contracts shared conceptually with Pydantic schemas
+## Concepts demonstrated
+
+Multi-tenancy · RBAC (role/tenant/row) · JWT + refresh rotation · DI/provider
+swapping · ORM migrations (Prisma) · state machines · audit logging ·
+LLM integration w/ fallback · React Query server-state · Zod-validated forms ·
+Kanban UI · charting (funnel/trends) · Docker packaging
