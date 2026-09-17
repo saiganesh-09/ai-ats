@@ -1,5 +1,29 @@
 # Architecture
 
+## High-level view (spec)
+
+```mermaid
+flowchart TB
+    U["👤 Users<br/>Candidate · Recruiter<br/>Hiring Manager · Admin"]
+    FE["Next.js Frontend<br/>React + TypeScript"]
+    BE["Backend API<br/>NestJS · Node.js + TypeScript"]
+    PG[("PostgreSQL<br/>Database")]
+    AI["AI Service<br/>LLM Integration"]
+    OS[("Object Storage<br/>Resume Files")]
+
+    U --> FE
+    FE -- "HTTPS / REST" --> BE
+    BE --> PG
+    BE --> AI
+    BE --> OS
+    PG -. "stores storage_key only<br/>(files never in the DB)" .-> OS
+```
+
+> Note: the spec's diagram hangs object storage off the database — in our
+> implementation the **API** owns the storage connection (the DB only keeps
+> the `storage_key`), which is the standard pattern: files never transit
+> Postgres.
+
 ## System overview
 
 ```mermaid
