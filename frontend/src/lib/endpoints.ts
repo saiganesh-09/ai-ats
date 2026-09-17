@@ -1,9 +1,10 @@
 // Typed endpoint wrappers — components call these, never request() directly.
 import { request } from './api'
 import type {
-  ActivityEntry, AdminAnalytics, Application, CandidateInsights, Company,
-  Dashboard, Interview, Job, JobSearchParams, MatchDetails, Notification,
-  Paginated, Profile, QuestionBank, Report, Resume, SavedJob, User,
+  ActivityEntry, AdminAnalytics, Application, CandidateDashboard,
+  CandidateInsights, Company, Dashboard, Interview, Job, JobSearchParams,
+  MatchDetails, Notification, Paginated, Profile, QuestionBank, Report,
+  Resume, SavedJob, User,
 } from './types'
 
 export const api = {
@@ -124,6 +125,7 @@ export const api = {
 
   // analytics
   dashboard: () => request<Dashboard>('/analytics/dashboard'),
+  candidateDashboard: () => request<CandidateDashboard>('/analytics/candidate-dashboard'),
 
   // admin
   adminAnalytics: () => request<AdminAnalytics>('/admin/analytics'),

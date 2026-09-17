@@ -224,6 +224,26 @@ export interface ActivityEntry {
   actor: { fullName: string; email: string } | null
 }
 
+export interface CandidateDashboard {
+  profileCompletion: number
+  missingCheckpoints: number
+  statusCounts: Record<string, number>
+  savedJobs: number
+  upcomingInterviews: number
+  unreadNotifications: number
+  recommendedJobs: {
+    id: number
+    title: string
+    company: string
+    location: string | null
+    workMode: WorkMode
+    employmentType: EmploymentType
+    salaryMin: number | null
+    salaryMax: number | null
+    matchCount: number
+  }[]
+}
+
 export interface Dashboard {
   totalJobs: number
   activeJobs: number
