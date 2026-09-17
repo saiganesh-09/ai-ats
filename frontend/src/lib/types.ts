@@ -113,6 +113,25 @@ export interface MatchDetails {
   explanation: string
 }
 
+export interface CandidateInsights {
+  summary: string
+  key_skills: string[]
+  relevant_experience: string
+  strengths: string[]
+  missing_requirements: string[]
+  interview_areas: string[]
+}
+
+export type QuestionBank = Record<'technical' | 'behavioral' | 'project_based' | 'role_specific' | 'situational', string[]>
+
+export const QUESTION_CATEGORIES: { key: keyof QuestionBank; label: string }[] = [
+  { key: 'technical', label: 'Technical' },
+  { key: 'behavioral', label: 'Behavioral' },
+  { key: 'project_based', label: 'Project-based' },
+  { key: 'role_specific', label: 'Role-specific' },
+  { key: 'situational', label: 'Situational' },
+]
+
 export interface Application {
   id: number
   jobId: number
@@ -120,7 +139,8 @@ export interface Application {
   coverNote: string | null
   matchScore: number | null
   matchDetails: MatchDetails | null
-  aiSummary: string | null
+  aiSummary: CandidateInsights | null
+  aiQuestions: QuestionBank | null
   createdAt: string
   job?: Job
   candidate?: Pick<User, 'id' | 'fullName' | 'email'> & {

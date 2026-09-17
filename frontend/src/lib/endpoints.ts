@@ -1,9 +1,9 @@
 // Typed endpoint wrappers — components call these, never request() directly.
 import { request } from './api'
 import type {
-  ActivityEntry, AdminAnalytics, Application, Company, Dashboard,
-  Interview, Job, JobSearchParams, MatchDetails, Notification, Paginated,
-  Profile, Report, Resume, SavedJob, User,
+  ActivityEntry, AdminAnalytics, Application, CandidateInsights, Company,
+  Dashboard, Interview, Job, JobSearchParams, MatchDetails, Notification,
+  Paginated, Profile, QuestionBank, Report, Resume, SavedJob, User,
 } from './types'
 
 export const api = {
@@ -96,9 +96,11 @@ export const api = {
   scoreApplication: (id: number) =>
     request<MatchDetails>(`/applications/${id}/score`, { method: 'POST' }),
   summarizeApplication: (id: number) =>
-    request<{ summary: string }>(`/applications/${id}/summarize`, { method: 'POST' }),
+    request<CandidateInsights>(`/applications/${id}/summarize`, { method: 'POST' }),
   generateQuestions: (id: number) =>
-    request<{ questions: string[] }>(`/applications/${id}/questions`, { method: 'POST' }),
+    request<QuestionBank>(`/applications/${id}/questions`, { method: 'POST' }),
+  saveQuestions: (id: number, questions: QuestionBank) =>
+    request<QuestionBank>(`/applications/${id}/questions`, { method: 'PUT', body: JSON.stringify({ questions }) }),
 
   // interviews
   scheduleInterview: (data: { applicationId: number; scheduledAt: string; location?: string; link?: string; notes?: string }) =>

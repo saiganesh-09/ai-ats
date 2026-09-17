@@ -6,7 +6,7 @@ import { BrainCircuit, CalendarPlus, Download, ListChecks, Sparkles } from 'luci
 import { toast } from 'sonner'
 import { api } from '@/lib/endpoints'
 import { getToken } from '@/lib/api'
-import { STATUS_ORDER } from '@/lib/types'
+import { QUESTION_CATEGORIES, STATUS_ORDER, type QuestionBank } from '@/lib/types'
 import { ScoreBadge, StatusBadge } from '@/components/badges'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,9 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
   const [note, setNote] = useState('')
   const [feedback, setFeedback] = useState('')
   const [rating, setRating] = useState('')
-  const [questions, setQuestions] = useState<string[] | null>(null)
+  const [questions, setQuestions] = useState<QuestionBank | null>(null)
+  const [editingQuestions, setEditingQuestions] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const [interview, setInterview] = useState({ scheduledAt: '', location: '', link: '', notes: '' })
 
   const { data: app, isLoading } = useQuery({
@@ -69,7 +71,12 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
   })
   const genQuestions = useMutation({
     mutationFn: () => api.generateQuestions(appId),
-    onSuccess: (d) => setQuestions(d.questions),
+    onSuccess: (d) => { setQuestions(d); setDirty(false); invalidate() },
+    onError: (e) => toast.error(e.message),
+  })
+  const saveQuestions = useMutation({
+    mutationFn: () => api.saveQuestions(appId, questions!),
+    onSuccess: () => { toast.success('Questions saved'); setEditingQuestions(false); setDirty(false) },
     onError: (e) => toast.error(e.message),
   })
   const schedule = useMutation({
@@ -215,24 +222,88 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
                 </>
               ) : <p className="text-muted-foreground">Run Score to generate AI match analysis.</p>}
               {app.aiSummary && (
-                <div className="rounded-md bg-muted p-3">
-                  <p className="mb-1 text-xs font-medium">AI candidate summary</p>
-                  <p>{app.aiSummary}</p>
+                <div className="space-y-2 rounded-md bg-muted p-3">
+                  <p className="text-xs font-medium">AI candidate summary</p>
+                  <p>{app.aiSummary.summary}</p>
+                  {!!app.aiSummary.key_skills?.length && (
+                    <div>
+                      <p className="mb-1 text-xs text-muted-foreground">Key skills</p>
+                      <div className="flex flex-wrap gap-1">
+                        {app.aiSummary.key_skills.map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}
+                      </div>
+                    </div>
+                  )}
+                  {app.aiSummary.relevant_experience && (
+                    <p className="text-xs"><span className="font-medium">Relevant experience:</span> {app.aiSummary.relevant_experience}</p>
+                  )}
+                  {!!app.aiSummary.strengths?.length && (
+                    <p className="text-xs"><span className="font-medium text-emerald-700">Strengths:</span> {app.aiSummary.strengths.join('; ')}</p>
+                  )}
+                  {!!app.aiSummary.missing_requirements?.length && (
+                    <p className="text-xs"><span className="font-medium text-red-600">Missing:</span> {app.aiSummary.missing_requirements.join('; ')}</p>
+                  )}
+                  {!!app.aiSummary.interview_areas?.length && (
+                    <p className="text-xs"><span className="font-medium">Probe in interview:</span> {app.aiSummary.interview_areas.join('; ')}</p>
+                  )}
                 </div>
               )}
               <div>
-                <Button
-                  variant="ghost" size="sm" className="px-0"
-                  onClick={() => genQuestions.mutate()} disabled={genQuestions.isPending}
-                >
-                  <ListChecks className="mr-2 h-4 w-4" />
-                  {genQuestions.isPending ? 'Generating…' : 'Generate interview questions'}
-                </Button>
-                {questions && (
-                  <ol className="mt-2 list-decimal space-y-1.5 pl-5">
-                    {questions.map((q, i) => <li key={i}>{q}</li>)}
-                  </ol>
-                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost" size="sm" className="px-0"
+                    onClick={() => genQuestions.mutate()} disabled={genQuestions.isPending}
+                  >
+                    <ListChecks className="mr-2 h-4 w-4" />
+                    {genQuestions.isPending ? 'Generating…' : questions || app.aiQuestions ? 'Regenerate questions' : 'Generate interview questions'}
+                  </Button>
+                  {(questions || app.aiQuestions) && !editingQuestions && (
+                    <Button variant="ghost" size="sm" onClick={() => { setQuestions(questions ?? app.aiQuestions!); setEditingQuestions(true) }}>
+                      Edit
+                    </Button>
+                  )}
+                </div>
+                {(() => {
+                  const bank = editingQuestions ? questions : (questions ?? app.aiQuestions)
+                  if (!bank) return null
+                  return (
+                    <div className="mt-2 space-y-2">
+                      {QUESTION_CATEGORIES.map(({ key, label }) =>
+                        bank[key]?.length ? (
+                          <div key={key}>
+                            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                            {editingQuestions ? (
+                              <div className="mt-1 space-y-1">
+                                {bank[key].map((q, i) => (
+                                  <Input
+                                    key={i} value={q}
+                                    onChange={(e) => {
+                                      const next = { ...bank, [key]: bank[key].map((x, j) => (j === i ? e.target.value : x)) }
+                                      setQuestions(next); setDirty(true)
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <ol className="list-decimal space-y-1 pl-5 text-sm">
+                                {bank[key].map((q, i) => <li key={i}>{q}</li>)}
+                              </ol>
+                            )}
+                          </div>
+                        ) : null,
+                      )}
+                      {editingQuestions && (
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={!dirty || saveQuestions.isPending} onClick={() => saveQuestions.mutate()}>
+                            {saveQuestions.isPending ? 'Saving…' : 'Save questions'}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => { setQuestions(app.aiQuestions); setEditingQuestions(false); setDirty(false) }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             </CardContent>
           </Card>

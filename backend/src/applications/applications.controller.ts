@@ -10,11 +10,13 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -70,6 +72,11 @@ class FeedbackDto {
   @IsString() @MinLength(1) text!: string;
   @IsOptional() @IsInt() @Min(1) @Max(5) rating?: number;
   @IsOptional() @IsInt() interviewId?: number;
+}
+
+class QuestionsDto {
+  @IsObject()
+  questions!: Record<string, string[]>;
 }
 
 @Controller('applications')
@@ -352,23 +359,50 @@ export class ApplicationsController {
     const result = await this.ai.summarizeCandidate(
       app.resume.parsed,
       app.job.title,
+      app.job.requirements,
     );
     await this.prisma.application.update({
       where: { id: app.id },
-      data: { aiSummary: result.summary },
+      data: { aiSummary: result as object },
     });
     return result;
   }
 
+  /** Generate (or regenerate) categorized interview questions — persisted. */
   @Post(':id/questions')
   @Roles(...STAFF)
   async questions(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
     const app = await this.staffApplication(id, user);
-    return this.ai.generateInterviewQuestions(
+    const bank = await this.ai.generateInterviewQuestions(
       app.resume.parsed,
       app.job.title,
       app.job.description,
     );
+    await this.prisma.application.update({
+      where: { id: app.id },
+      data: { aiQuestions: bank as object },
+    });
+    return bank;
+  }
+
+  /** Save recruiter-edited questions — the AI drafts, the human owns. */
+  @Put(':id/questions')
+  @Roles(...STAFF)
+  async saveQuestions(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: QuestionsDto,
+  ) {
+    const app = await this.staffApplication(id, user);
+    const q = dto.questions;
+    const valid = q && typeof q === 'object' && !Array.isArray(q) &&
+      Object.values(q).every((arr) => Array.isArray(arr) && arr.every((s) => typeof s === 'string'));
+    if (!valid) throw new BadRequestException('questions must be {category: string[]}');
+    const updated = await this.prisma.application.update({
+      where: { id: app.id },
+      data: { aiQuestions: q as object },
+    });
+    return updated.aiQuestions;
   }
 
   // ---------- scoping helpers ----------

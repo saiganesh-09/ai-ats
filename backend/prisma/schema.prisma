@@ -63,36 +63,36 @@ enum ReportStatus {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  fullName      String   @map("full_name")
-  passwordHash  String   @map("password_hash")
-  role          Role     @default(CANDIDATE)
-  isActive      Boolean  @default(true) @map("is_active")
-  isSuperadmin  Boolean  @default(false) @map("is_superadmin")
-  companyId     Int?     @map("company_id")
-  company       Company? @relation(fields: [companyId], references: [id])
-  createdAt     DateTime @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  fullName     String   @map("full_name")
+  passwordHash String   @map("password_hash")
+  role         Role     @default(CANDIDATE)
+  isActive     Boolean  @default(true) @map("is_active")
+  isSuperadmin Boolean  @default(false) @map("is_superadmin")
+  companyId    Int?     @map("company_id")
+  company      Company? @relation(fields: [companyId], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  profile               Profile?
-  skills                CandidateSkill[]
-  experiences           Experience[]
-  educations            Education[]
-  certifications        Certification[]
-  resumes               Resume[]
-  jobsPosted            Job[]              @relation("JobRecruiter")
-  jobsManaged           Job[]              @relation("JobHiringManager")
-  applications          Application[]      @relation("CandidateApplications")
-  assignedApplications  Application[]      @relation("AssignedRecruiter")
-  savedJobs             SavedJob[]
-  notifications         Notification[]
-  notes                 Note[]
-  feedback              Feedback[]
-  interviewsScheduled   Interview[]
-  reports               Report[]
-  refreshTokens         RefreshToken[]
-  activityLogs          ActivityLog[]
-  statusChanges         ApplicationStatusHistory[]
+  profile              Profile?
+  skills               CandidateSkill[]
+  experiences          Experience[]
+  educations           Education[]
+  certifications       Certification[]
+  resumes              Resume[]
+  jobsPosted           Job[]                      @relation("JobRecruiter")
+  jobsManaged          Job[]                      @relation("JobHiringManager")
+  applications         Application[]              @relation("CandidateApplications")
+  assignedApplications Application[]              @relation("AssignedRecruiter")
+  savedJobs            SavedJob[]
+  notifications        Notification[]
+  notes                Note[]
+  feedback             Feedback[]
+  interviewsScheduled  Interview[]
+  reports              Report[]
+  refreshTokens        RefreshToken[]
+  activityLogs         ActivityLog[]
+  statusChanges        ApplicationStatusHistory[]
 
   @@map("users")
 }
@@ -185,9 +185,9 @@ model Education {
 }
 
 model Certification {
-  id     Int    @id @default(autoincrement())
-  userId Int    @map("user_id")
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     Int     @id @default(autoincrement())
+  userId Int     @map("user_id")
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name   String
   issuer String?
   year   Int?
@@ -197,13 +197,13 @@ model Certification {
 }
 
 model Job {
-  id              Int       @id @default(autoincrement())
-  companyId       Int       @map("company_id")
-  company         Company   @relation(fields: [companyId], references: [id])
-  recruiterId     Int       @map("recruiter_id")
-  recruiter       User      @relation("JobRecruiter", fields: [recruiterId], references: [id])
-  hiringManagerId Int?      @map("hiring_manager_id")
-  hiringManager   User?     @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
+  id                   Int             @id @default(autoincrement())
+  companyId            Int             @map("company_id")
+  company              Company         @relation(fields: [companyId], references: [id])
+  recruiterId          Int             @map("recruiter_id")
+  recruiter            User            @relation("JobRecruiter", fields: [recruiterId], references: [id])
+  hiringManagerId      Int?            @map("hiring_manager_id")
+  hiringManager        User?           @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
   title                String
   location             String?
   description          String
@@ -240,15 +240,15 @@ enum ParsedStatus {
 }
 
 model Resume {
-  id               Int      @id @default(autoincrement())
-  candidateId      Int      @map("candidate_id")
-  candidate        User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  originalFilename String   @map("original_filename")
-  storageKey       String   @map("storage_key") // object-storage key, not a path
-  rawText          String   @map("raw_text")
+  id               Int          @id @default(autoincrement())
+  candidateId      Int          @map("candidate_id")
+  candidate        User         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  originalFilename String       @map("original_filename")
+  storageKey       String       @map("storage_key") // object-storage key, not a path
+  rawText          String       @map("raw_text")
   parsed           Json?
   parsedStatus     ParsedStatus @default(PENDING) @map("parsed_status")
-  createdAt        DateTime @default(now()) @map("created_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
 
   applications Application[]
 
@@ -270,7 +270,8 @@ model Application {
   status              ApplicationStatus @default(APPLIED)
   matchScore          Float?            @map("match_score")
   matchDetails        Json?             @map("match_details")
-  aiSummary           String?           @map("ai_summary")
+  aiSummary           Json?             @map("ai_summary") // structured: summary + skills + strengths + gaps
+  aiQuestions         Json?             @map("ai_questions") // categorized, editable
   createdAt           DateTime          @default(now()) @map("created_at")
 
   notes      Note[]
@@ -287,15 +288,15 @@ model Application {
 // Every status transition is recorded — powers the pipeline timeline and
 // answers "when was this candidate shortlisted" forever.
 model ApplicationStatusHistory {
-  id            Int               @id @default(autoincrement())
-  applicationId Int               @map("application_id")
-  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  id            Int                @id @default(autoincrement())
+  applicationId Int                @map("application_id")
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   fromStatus    ApplicationStatus? @map("from_status")
-  toStatus      ApplicationStatus @map("to_status")
-  changedById   Int?              @map("changed_by_id")
-  changedBy     User?             @relation(fields: [changedById], references: [id])
-  reason        String?           // e.g. rejection reason — spec's optional field
-  createdAt     DateTime          @default(now()) @map("created_at")
+  toStatus      ApplicationStatus  @map("to_status")
+  changedById   Int?               @map("changed_by_id")
+  changedBy     User?              @relation(fields: [changedById], references: [id])
+  reason        String? // e.g. rejection reason — spec's optional field
+  createdAt     DateTime           @default(now()) @map("created_at")
 
   @@index([applicationId])
   @@map("application_status_history")

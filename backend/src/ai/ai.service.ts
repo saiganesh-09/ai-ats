@@ -1,6 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 
+export interface CandidateInsights {
+  summary: string;
+  key_skills: string[];
+  relevant_experience: string;
+  strengths: string[];
+  missing_requirements: string[];
+  interview_areas: string[];
+}
+
+export interface QuestionBank {
+  technical: string[];
+  behavioral: string[];
+  project_based: string[];
+  role_specific: string[];
+  situational: string[];
+}
+
 export interface MatchResult {
   score: number;
   matched_skills: string[];
@@ -105,16 +122,29 @@ PARSED RESUME: ${JSON.stringify(parsedResume).slice(0, 6000)}`;
 
   // ---------- candidate summary ----------
 
-  summarizeCandidate(parsedResume: unknown, jobTitle: string): Promise<{ summary: string }> {
-    const prompt = `Write a 3-4 sentence recruiter-facing summary of this candidate
-for the role "${jobTitle}". Highlight relevant strengths and one potential concern.
-Respond with ONLY valid JSON: {"summary":"..."}
+  summarizeCandidate(
+    parsedResume: unknown,
+    jobTitle: string,
+    jobRequirements?: string | null,
+  ): Promise<CandidateInsights> {
+    const prompt = `Write a structured recruiter-facing analysis of this candidate for
+the role "${jobTitle}". Respond with ONLY valid JSON:
+{"summary":"3-4 sentence assessment","key_skills":["strongest relevant skills, max 6"],"relevant_experience":"1-2 sentences on applicable work history","strengths":["potential strengths, max 4"],"missing_requirements":["gaps vs the posting, max 4"],"interview_areas":["topics worth probing, max 4"]}
 
+JOB REQUIREMENTS: ${jobRequirements ?? 'not specified'}
 PARSED RESUME: ${JSON.stringify(parsedResume).slice(0, 6000)}`;
     return this.tryAi(prompt, () => {
-      const skills = (parsedResume as ParsedResume)?.skills ?? [];
+      const resume = parsedResume as ParsedResume;
+      const skills = resume?.skills ?? [];
+      const jobSkills = this.foundSkills(`${jobTitle} ${jobRequirements ?? ''}`);
+      const missing = jobSkills.filter((s) => !skills.map((x) => x.toLowerCase()).includes(s));
       return {
         summary: `Candidate profile lists ${skills.length} skills including ${skills.slice(0, 4).join(', ') || 'none detected'}. Review the parsed resume for details. (Mock summary — set OPENAI_API_KEY for real AI summaries.)`,
+        key_skills: skills.slice(0, 6),
+        relevant_experience: 'See parsed experience section for details.',
+        strengths: skills.slice(0, 4),
+        missing_requirements: missing.slice(0, 4),
+        interview_areas: missing.slice(0, 2).map((s) => `Depth of ${s} experience`),
       };
     });
   }
@@ -125,24 +155,33 @@ PARSED RESUME: ${JSON.stringify(parsedResume).slice(0, 6000)}`;
     parsedResume: unknown,
     title: string,
     description: string,
-  ): Promise<{ questions: string[] }> {
-    const prompt = `Generate 6 interview questions for a "${title}" role, tailored to
-this candidate's background — mix technical, behavioral, and gap-probing questions
-about skills the job needs but the resume may lack.
-Respond with ONLY valid JSON: {"questions":["q1","q2",...]}
+  ): Promise<QuestionBank> {
+    const prompt = `Generate interview questions for a "${title}" role tailored to this
+candidate. Respond with ONLY valid JSON — 2-3 questions per category:
+{"technical":["..."],"behavioral":["..."],"project_based":["..."],"role_specific":["..."],"situational":["..."]}
+Probe skills the job needs but the resume may lack.
 
 JOB DESCRIPTION: ${description.slice(0, 4000)}
 PARSED RESUME: ${JSON.stringify(parsedResume).slice(0, 4000)}`;
     return this.tryAi(prompt, () => {
       const jobSkills = this.foundSkills(`${title} ${description}`);
       return {
-        questions: [
+        technical: [
           `Walk me through your experience with ${jobSkills[0] ?? 'the core stack'} — what did you build?`,
-          `Describe a difficult technical problem you solved recently.`,
-          `This role uses ${jobSkills.slice(0, 3).join(', ')} — which are you strongest and weakest in?`,
-          `Tell me about a time you had to learn a new technology quickly.`,
           `How do you approach testing and code quality?`,
-          `Why are you interested in this ${title} role specifically?`,
+        ],
+        behavioral: [
+          'Describe a difficult technical problem you solved recently.',
+          'Tell me about a time you had to learn a new technology quickly.',
+        ],
+        project_based: [
+          'Pick a project from your resume — what would you do differently today?',
+        ],
+        role_specific: [
+          `This role uses ${jobSkills.slice(0, 3).join(', ') || 'our stack'} — which are you strongest and weakest in?`,
+        ],
+        situational: [
+          'A deploy breaks production at 5pm Friday — walk me through your first hour.',
         ],
       };
     });
