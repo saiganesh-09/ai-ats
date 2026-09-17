@@ -73,7 +73,9 @@ apply tenant + row scoping. Every error exits as
 [API.md](docs/API.md) (all 64 endpoints) ·
 [DATABASE.md](docs/DATABASE.md) (ERD + constraints) ·
 [SECURITY.md](docs/SECURITY.md) · [DEPLOYMENT.md](docs/DEPLOYMENT.md) ·
-[DOCKER.md](docs/DOCKER.md) · [STRUCTURE.md](docs/STRUCTURE.md)
+[DOCKER.md](docs/DOCKER.md) · [STRUCTURE.md](docs/STRUCTURE.md) ·
+[INDEXES.md](docs/INDEXES.md) · [PHASES.md](docs/PHASES.md) ·
+**[LEARNING.md](docs/LEARNING.md)** (module-by-module interview prep)
 
 ## Tech stack
 
