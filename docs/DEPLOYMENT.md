@@ -40,7 +40,7 @@ connection string into `DATABASE_URL`; `migrate deploy` runs on container start.
 
 **Neon (recommended free tier):** create project → copy the `postgresql://`
 string → append `?sslmode=require` if missing → that's `DATABASE_URL`.
-Seed demo data once: run `npm run seed` (or `npx tsx prisma/seed.ts`) from
+Seed demo data once: run `npx prisma db seed` from
 `backend/` with `DATABASE_URL` pointing at Neon.
 
 ## Public demo mode
@@ -50,7 +50,7 @@ UI shows a banner with demo logins and a reset notice. To refresh demo data
 periodically, add a Render **cron job** running:
 
 ```bash
-cd backend && npx prisma migrate reset --force --skip-seed && npx tsx prisma/seed.ts
+cd backend && npx prisma migrate reset --force --skip-seed && npx prisma db seed
 ```
 
 (Or run it manually whenever the demo data gets messy.)

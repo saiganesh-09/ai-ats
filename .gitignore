@@ -18,3 +18,4 @@ backend/storage/
 .DS_Store
 *.log
 coverage/
+.neon
