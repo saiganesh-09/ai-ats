@@ -307,6 +307,26 @@ export class JobsController {
     });
   }
 
+  /**
+   * Delete a posting — only when it has no applications. Applications
+   * cascade-delete with the job, so refusing here prevents silently
+   * destroying candidate records; jobs with applicants must be CLOSED instead.
+   */
+  @Delete(':id')
+  @Roles(Role.RECRUITER, Role.ADMIN)
+  async remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    const job = await this.companyJob(id, user);
+    const apps = await this.prisma.application.count({ where: { jobId: job.id } });
+    if (apps > 0) {
+      throw new BadRequestException(
+        `Cannot delete a job with ${apps} application(s) — close it instead`,
+      );
+    }
+    await this.prisma.job.delete({ where: { id: job.id } });
+    await this.activity.log(user.id, 'job.deleted', 'job', id);
+    return { ok: true };
+  }
+
   @Post(':id/analyze')
   @Roles(Role.RECRUITER, Role.ADMIN)
   async analyze(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {

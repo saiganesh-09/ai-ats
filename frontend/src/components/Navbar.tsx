@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, Briefcase, LogOut } from 'lucide-react'
+import { Bell, Briefcase, LogOut, Menu } from 'lucide-react'
 import { api } from '@/lib/endpoints'
 import { homeFor, useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,8 @@ export function Navbar() {
         <Link href="/" className="flex items-center gap-2 font-bold text-primary">
           <Briefcase className="h-5 w-5" /> AI ATS
         </Link>
-        <nav className="flex flex-1 items-center gap-1 text-sm">
+        {/* desktop nav — hidden on mobile, replaced by the hamburger menu */}
+        <nav className="hidden flex-1 items-center gap-1 text-sm md:flex">
           <Link
             href="/jobs"
             className={`rounded-md px-3 py-1.5 hover:bg-accent ${pathname.startsWith('/jobs') ? 'bg-accent font-medium' : ''}`}
@@ -74,6 +75,20 @@ export function Navbar() {
             </Link>
           ))}
         </nav>
+        {/* mobile nav — hamburger dropdown below md breakpoint */}
+        <div className="flex-1 md:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm"><Menu className="h-5 w-5" /></Button>} />
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => { window.location.href = '/jobs' }}>Jobs</DropdownMenuItem>
+              {links.map((l) => (
+                <DropdownMenuItem key={l.href} onClick={() => { window.location.href = l.href }}>
+                  {l.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="flex items-center gap-2">
           {user ? (
             <>
