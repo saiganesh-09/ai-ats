@@ -170,6 +170,9 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
                 <BrainCircuit className="h-4 w-4 text-primary" /> AI insights
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-normal text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  AI-generated estimate
+                </span>
               </CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => score.mutate()} disabled={score.isPending}>
@@ -184,6 +187,19 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
               {app.matchDetails ? (
                 <>
                   <p>{app.matchDetails.explanation}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md border p-2">
+                      <p className="text-muted-foreground">Experience match</p>
+                      <p className="font-semibold">{app.matchDetails.experience_match ?? '—'}</p>
+                    </div>
+                    <div className="rounded-md border p-2">
+                      <p className="text-muted-foreground">Education match</p>
+                      <p className="font-semibold">{app.matchDetails.education_match ?? '—'}</p>
+                    </div>
+                  </div>
+                  <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                    AI-generated matching estimate — review the original resume before making decisions.
+                  </p>
                   <div>
                     <p className="mb-1 text-xs font-medium text-emerald-600">Matched skills</p>
                     <div className="flex flex-wrap gap-1">

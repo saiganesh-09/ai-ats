@@ -5,6 +5,8 @@ export interface MatchResult {
   score: number;
   matched_skills: string[];
   missing_skills: string[];
+  experience_match: 'STRONG' | 'PARTIAL' | 'WEAK';
+  education_match: 'STRONG' | 'PARTIAL' | 'WEAK' | 'UNKNOWN';
   explanation: string;
 }
 
@@ -86,7 +88,10 @@ ${rawText.slice(0, 12000)}`;
   ): Promise<MatchResult> {
     const prompt = `You are an ATS matching engine. Score how well this candidate's
 parsed resume matches the job. Respond with ONLY valid JSON in this shape:
-{"score":0-100,"matched_skills":["..."],"missing_skills":["..."],"explanation":"2-3 sentences"}
+{"score":0-100,"matched_skills":["..."],"missing_skills":["..."],"experience_match":"STRONG|PARTIAL|WEAK","education_match":"STRONG|PARTIAL|WEAK|UNKNOWN","explanation":"2-3 sentences"}
+experience_match judges how well the candidate's work history fits the role's
+seniority and domain; education_match judges degrees/certifications vs the
+posting's education requirements (UNKNOWN if unstated).
 
 JOB TITLE: ${title}
 JOB DESCRIPTION: ${description.slice(0, 6000)}
@@ -197,10 +202,16 @@ DESCRIPTION: ${description.slice(0, 6000)}`;
     const matched = [...jobSkills].filter((s) => resumeSkills.has(s)).sort();
     const missing = [...jobSkills].filter((s) => !resumeSkills.has(s)).sort();
     const score = jobSkills.size ? Math.round((100 * matched.length) / jobSkills.size) : 50;
+    const band = (s: number) =>
+      s >= 70 ? 'STRONG' as const : s >= 40 ? 'PARTIAL' as const : 'WEAK' as const;
+    const hasEducation = Array.isArray((parsedResume as ParsedResume)?.education)
+      && ((parsedResume as ParsedResume).education?.length ?? 0) > 0;
     return {
       score,
       matched_skills: matched,
       missing_skills: missing,
+      experience_match: band(score),
+      education_match: hasEducation ? band(score) : 'UNKNOWN',
       explanation: `Heuristic match: candidate has ${matched.length} of ${jobSkills.size} skills mentioned in the job posting.`,
     };
   }

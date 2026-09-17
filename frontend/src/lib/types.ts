@@ -108,6 +108,8 @@ export interface MatchDetails {
   score: number
   matched_skills: string[]
   missing_skills: string[]
+  experience_match?: 'STRONG' | 'PARTIAL' | 'WEAK'
+  education_match?: 'STRONG' | 'PARTIAL' | 'WEAK' | 'UNKNOWN'
   explanation: string
 }
 
