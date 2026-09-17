@@ -13,6 +13,13 @@ import argon2 from 'argon2';
 const prisma = new PrismaClient();
 const pw = () => argon2.hash('password123');
 
+const upsertSkill = (name: string) =>
+  prisma.skill.upsert({
+    where: { name },
+    create: { name },
+    update: {},
+  }).then((s) => ({ id: s.id }));
+
 async function main() {
   const passwordHash = await pw();
 
@@ -59,6 +66,13 @@ async function main() {
         'PostgreSQL, Prisma, Docker and AWS. Strong SQL skills required.',
       requirements: 'TypeScript, Node, PostgreSQL, Docker, REST',
       status: JobStatus.OPEN,
+      skills: {
+        create: await Promise.all(
+          ['typescript', 'node', 'postgresql', 'docker', 'rest'].map(
+            async (n) => ({ skill: { connect: await upsertSkill(n) } }),
+          ),
+        ),
+      },
     },
   });
   const frontend = await prisma.job.create({
@@ -70,6 +84,13 @@ async function main() {
         'with TanStack Query, charts with Recharts.',
       requirements: 'React, TypeScript, Next.js, Tailwind',
       status: JobStatus.OPEN,
+      skills: {
+        create: await Promise.all(
+          ['react', 'typescript', 'next.js', 'tailwind'].map(
+            async (n) => ({ skill: { connect: await upsertSkill(n) } }),
+          ),
+        ),
+      },
     },
   });
   await prisma.job.create({
@@ -105,13 +126,20 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         email: c.email, fullName: c.fullName, passwordHash, role: Role.CANDIDATE,
-        profile: {
-          create: {
-            headline: c.text.split('\n')[1],
-            skills: c.skills,
-            experience: [{ title: 'Software Engineer', company: 'Previous Co', years: 3 }],
-            education: [{ degree: 'BS Computer Science', institution: 'State University', year: 2020 }],
-          },
+        profile: { create: { headline: c.text.split('\n')[1] } },
+        experiences: {
+          create: [{ title: 'Software Engineer', company: 'Previous Co', years: 3 }],
+        },
+        educations: {
+          create: [{ degree: 'BS Computer Science', institution: 'State University', year: 2020 }],
+        },
+        skills: {
+          create: await Promise.all(
+            c.skills.map(async (name) => ({
+              skill: { connect: await upsertSkill(name) },
+              source: 'resume',
+            })),
+          ),
         },
       },
     });

@@ -17,6 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { ResumesModule } from './resumes/resumes.module';
+import { SkillsModule } from './skills/skills.module';
 import { StorageModule } from './storage/storage.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { StorageModule } from './storage/storage.module';
       },
     }),
     PrismaModule,
+    SkillsModule,
     StorageModule,
     AiModule,
     ActivityModule,

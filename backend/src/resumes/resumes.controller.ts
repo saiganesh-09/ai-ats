@@ -23,6 +23,7 @@ import { ActivityService } from '../activity/activity.service';
 import { AiService } from '../ai/ai.service';
 import { CurrentUser, Roles } from '../common/decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { SkillsService } from '../skills/skills.service';
 import { resumeKey, STORAGE, type ObjectStorage } from '../storage/storage.service';
 
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -33,6 +34,7 @@ export class ResumesController {
     private prisma: PrismaService,
     private ai: AiService,
     private activity: ActivityService,
+    private skills: SkillsService,
     @Inject(STORAGE) private storage: ObjectStorage,
   ) {}
 
@@ -63,17 +65,9 @@ export class ResumesController {
     });
 
     // Parse once, candidate edits after: merge extracted skills into the
-    // candidate's editable profile so they don't retype what the AI found.
+    // normalized skills taxonomy (source='resume' tracks provenance).
     if (parsed.skills?.length) {
-      const profile = await this.prisma.profile.findUnique({
-        where: { userId: user.id },
-      });
-      const merged = [...new Set([...(profile?.skills ?? []), ...parsed.skills])];
-      await this.prisma.profile.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, skills: merged },
-        update: { skills: merged },
-      });
+      await this.skills.mergeCandidateSkills(user.id, parsed.skills, 'resume');
     }
 
     await this.activity.log(user.id, 'resume.uploaded', 'resume', resume.id);

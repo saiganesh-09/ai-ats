@@ -79,6 +79,18 @@ export class ApplicationsController {
     private notifications: NotificationsService,
   ) {}
 
+  /** Record a status transition — the immutable audit trail of the pipeline. */
+  private recordHistory(
+    applicationId: number,
+    fromStatus: ApplicationStatus | null,
+    toStatus: ApplicationStatus,
+    changedById?: number,
+  ) {
+    return this.prisma.applicationStatusHistory.create({
+      data: { applicationId, fromStatus, toStatus, changedById },
+    });
+  }
+
   // ---------- candidate ----------
 
   @Post()
@@ -104,6 +116,7 @@ export class ApplicationsController {
         },
         include: { job: { include: { company: { select: { name: true } } } } },
       });
+      await this.recordHistory(application.id, null, ApplicationStatus.APPLIED, user.id);
       await this.activity.log(user.id, 'application.submitted', 'application', application.id);
       return application;
     } catch (e) {
@@ -139,10 +152,12 @@ export class ApplicationsController {
         `Cannot withdraw at ${app.status} stage`,
       );
     }
-    return this.prisma.application.update({
+    const updated = await this.prisma.application.update({
       where: { id },
       data: { status: ApplicationStatus.WITHDRAWN },
     });
+    await this.recordHistory(id, app.status, ApplicationStatus.WITHDRAWN, user.id);
+    return updated;
   }
 
   // ---------- staff pipeline ----------
@@ -198,7 +213,11 @@ export class ApplicationsController {
       include: {
         job: { include: { company: { select: { name: true } } } },
         candidate: {
-          select: { id: true, fullName: true, email: true, profile: true },
+          select: {
+            id: true, fullName: true, email: true, profile: true,
+            skills: { include: { skill: { select: { name: true } } } },
+            experiences: { orderBy: { id: 'asc' } },
+          },
         },
         resume: true,
         assignedRecruiter: { select: { id: true, fullName: true } },
@@ -211,6 +230,10 @@ export class ApplicationsController {
           orderBy: { createdAt: 'desc' },
         },
         interviews: { orderBy: { scheduledAt: 'desc' } },
+        history: {
+          include: { changedBy: { select: { fullName: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
   }
@@ -227,6 +250,7 @@ export class ApplicationsController {
       where: { id: app.id },
       data: { status: dto.status },
     });
+    await this.recordHistory(app.id, app.status, dto.status, user.id);
     await this.notifications.notify(app.candidateId, 'application.status', {
       applicationId: app.id,
       jobId: app.jobId,

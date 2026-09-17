@@ -76,6 +76,14 @@ export class InterviewsController {
         where: { id: app.id },
         data: { status: ApplicationStatus.INTERVIEW },
       }),
+      this.prisma.applicationStatusHistory.create({
+        data: {
+          applicationId: app.id,
+          fromStatus: app.status,
+          toStatus: ApplicationStatus.INTERVIEW,
+          changedById: user.id,
+        },
+      }),
     ]);
     await this.notifications.notify(app.candidateId, 'interview.scheduled', {
       applicationId: app.id,

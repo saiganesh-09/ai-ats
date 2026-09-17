@@ -25,7 +25,8 @@ export interface Company {
 }
 
 export interface Profile {
-  id: number
+  id?: number
+  userId?: number
   headline: string | null
   skills: string[]
   experience: Array<{ title?: string; company?: string; years?: number; description?: string }>
@@ -78,12 +79,23 @@ export interface Application {
   aiSummary: string | null
   createdAt: string
   job?: Job
-  candidate?: Pick<User, 'id' | 'fullName' | 'email'> & { profile?: Profile | null }
+  candidate?: Pick<User, 'id' | 'fullName' | 'email'> & {
+    profile?: { headline: string | null } | null
+    skills?: { skill: { name: string } }[]
+    experiences?: { title: string; company: string; years: number | null }[]
+  }
   resume?: Resume
   assignedRecruiter?: { id: number; fullName: string } | null
   notes?: Note[]
   feedback?: Feedback[]
   interviews?: Interview[]
+  history?: {
+    id: number
+    fromStatus: ApplicationStatus | null
+    toStatus: ApplicationStatus
+    createdAt: string
+    changedBy: { fullName: string } | null
+  }[]
 }
 
 export interface Note {

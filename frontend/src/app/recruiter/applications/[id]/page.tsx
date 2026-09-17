@@ -230,10 +230,17 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
                   {skills.map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}
                 </div>
               )}
-              {app.candidate?.profile?.experience?.length ? (
+              {!!app.candidate?.skills?.length && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {app.candidate.skills.map((cs) => (
+                    <Badge key={cs.skill.name} variant="outline">{cs.skill.name}</Badge>
+                  ))}
+                </div>
+              )}
+              {app.candidate?.experiences?.length ? (
                 <div className="mt-3">
                   <p className="text-xs font-medium text-muted-foreground">Experience</p>
-                  {app.candidate.profile.experience.map((e, i) => (
+                  {app.candidate.experiences.map((e, i) => (
                     <p key={i} className="mt-1">· {e.title} @ {e.company} ({e.years}y)</p>
                   ))}
                 </div>
@@ -249,8 +256,29 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* right: activity — notes, feedback, interviews */}
+        {/* right: activity — timeline, notes, feedback, interviews */}
         <div className="space-y-4">
+          {!!app.history?.length && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Pipeline history</CardTitle></CardHeader>
+              <CardContent>
+                <ol className="space-y-2 border-l-2 border-muted pl-4 text-sm">
+                  {app.history.map((h) => (
+                    <li key={h.id} className="relative">
+                      <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                      <p>
+                        {h.fromStatus ? <span className="text-muted-foreground">{h.fromStatus} → </span> : ''}
+                        <strong>{h.toStatus}</strong>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {h.changedBy?.fullName ?? 'system'} · {new Date(h.createdAt).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </CardContent>
+            </Card>
+          )}
           {!!app.interviews?.length && (
             <Card>
               <CardHeader><CardTitle className="text-base">Interviews</CardTitle></CardHeader>

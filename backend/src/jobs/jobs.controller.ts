@@ -25,6 +25,7 @@ import { ActivityService } from '../activity/activity.service';
 import { AiService } from '../ai/ai.service';
 import { CurrentUser, Public, Roles } from '../common/decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { SkillsService } from '../skills/skills.service';
 
 class JobDto {
   @IsString()
@@ -70,6 +71,7 @@ export class JobsController {
     private prisma: PrismaService,
     private activity: ActivityService,
     private ai: AiService,
+    private skills: SkillsService,
   ) {}
 
   // ---------- public job board ----------
@@ -149,6 +151,12 @@ export class JobsController {
         recruiterId: user.id,
       },
     });
+    // Normalize the posting's skills into the taxonomy — powers skill-based
+    // matching and "jobs needing X" queries.
+    await this.skills.syncJobSkills(
+      job.id,
+      this.skills.extractFromText(`${dto.description} ${dto.requirements ?? ''}`),
+    );
     await this.activity.log(user.id, 'job.created', 'job', job.id);
     return job;
   }
@@ -162,7 +170,19 @@ export class JobsController {
   ) {
     const job = await this.companyJob(id, user);
     await this.assertHiringManager(dto.hiringManagerId, job.companyId);
-    return this.prisma.job.update({ where: { id: job.id }, data: dto });
+    const updated = await this.prisma.job.update({
+      where: { id: job.id },
+      data: dto,
+    });
+    if (dto.description !== undefined || dto.requirements !== undefined) {
+      await this.skills.syncJobSkills(
+        job.id,
+        this.skills.extractFromText(
+          `${updated.description} ${updated.requirements ?? ''}`,
+        ),
+      );
+    }
+    return updated;
   }
 
   @Post(':id/publish')

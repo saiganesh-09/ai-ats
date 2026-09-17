@@ -54,6 +54,10 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
 
   profile               Profile?
+  skills                CandidateSkill[]
+  experiences           Experience[]
+  educations            Education[]
+  certifications        Certification[]
   resumes               Resume[]
   jobsPosted            Job[]              @relation("JobRecruiter")
   jobsManaged           Job[]              @relation("JobHiringManager")
@@ -67,6 +71,7 @@ model User {
   reports               Report[]
   refreshTokens         RefreshToken[]
   activityLogs          ActivityLog[]
+  statusChanges         ApplicationStatusHistory[]
 
   @@map("users")
 }
@@ -83,18 +88,89 @@ model Company {
   @@map("companies")
 }
 
+// The Candidate subtype of User (class-table inheritance): exists only for
+// role=CANDIDATE, holds candidate-only attributes. Recruiter/HM have no extra
+// attributes, so they need no subtype table — their data is entirely on User.
 model Profile {
-  id             Int      @id @default(autoincrement())
-  userId         Int      @unique @map("user_id")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  headline       String?
-  skills         String[] // real Postgres text[] — queryable array column
-  experience     Json     @default("[]") // [{title, company, years, description}]
-  education      Json     @default("[]") // [{degree, institution, year}]
-  certifications Json     @default("[]") // [{name, issuer, year}]
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline  String?
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("profiles")
+}
+
+// Normalized skills taxonomy: one canonical row per skill, linked M:N to
+// candidates (CandidateSkill) and jobs (JobSkill). Enables "jobs matching
+// your skills" and recruiter skill search — impossible with text[] columns.
+model Skill {
+  id   Int    @id @default(autoincrement())
+  name String @unique // lowercase canonical form
+
+  candidates CandidateSkill[]
+  jobs       JobSkill[]
+
+  @@map("skills")
+}
+
+model CandidateSkill {
+  userId  Int    @map("user_id")
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillId Int    @map("skill_id")
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  source  String @default("manual") // 'manual' | 'resume' — provenance
+
+  @@id([userId, skillId])
+  @@map("candidate_skills")
+}
+
+model JobSkill {
+  jobId   Int    @map("job_id")
+  job     Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skillId Int    @map("skill_id")
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, skillId])
+  @@map("job_skills")
+}
+
+// Structured candidate history — normalized rows, one parent each (User).
+model Experience {
+  id          Int     @id @default(autoincrement())
+  userId      Int     @map("user_id")
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  company     String
+  years       Int?
+  description String?
+
+  @@index([userId])
+  @@map("experiences")
+}
+
+model Education {
+  id          Int    @id @default(autoincrement())
+  userId      Int    @map("user_id")
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  degree      String
+  institution String
+  year        Int?
+
+  @@index([userId])
+  @@map("educations")
+}
+
+model Certification {
+  id     Int    @id @default(autoincrement())
+  userId Int    @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name   String
+  issuer String?
+  year   Int?
+
+  @@index([userId])
+  @@map("certifications")
 }
 
 model Job {
@@ -115,6 +191,7 @@ model Job {
   applications Application[]
   savedBy      SavedJob[]
   reports      Report[]
+  skills       JobSkill[]
 
   @@index([companyId])
   @@index([hiringManagerId])
@@ -157,11 +234,28 @@ model Application {
   notes      Note[]
   feedback   Feedback[]
   interviews Interview[]
+  history    ApplicationStatusHistory[]
 
   @@unique([jobId, candidateId]) // "apply once" enforced at the DB level
   @@index([candidateId])
   @@index([jobId, status])
   @@map("applications")
+}
+
+// Every status transition is recorded — powers the pipeline timeline and
+// answers "when was this candidate shortlisted" forever.
+model ApplicationStatusHistory {
+  id            Int               @id @default(autoincrement())
+  applicationId Int               @map("application_id")
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus? @map("from_status")
+  toStatus      ApplicationStatus @map("to_status")
+  changedById   Int?              @map("changed_by_id")
+  changedBy     User?             @relation(fields: [changedById], references: [id])
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@map("application_status_history")
 }
 
 model Note {
