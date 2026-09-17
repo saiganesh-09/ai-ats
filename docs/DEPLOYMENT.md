@@ -61,6 +61,17 @@ instead of streaming through the API.
 docker compose up --build   # db + api + web, see docker-compose.yml
 ```
 
+## Email
+
+`EmailService` mirrors the storage abstraction: `MailProvider` interface with
+`ConsoleMailProvider` (dev default — logs rendered HTML) and
+`SmtpMailProvider` (nodemailer, activated by setting `SMTP_HOST`; creds via
+`SMTP_USER`/`SMTP_PASS` env vars — never hard-coded).
+Templates live in `backend/src/email/templates.ts`. Interview reminders run
+via an hourly cron (`InterviewRemindersService`) ~24h before each interview,
+deduped by `interviews.reminder_sent_at`. All sends are fire-and-forget —
+an email outage never fails a business request.
+
 ## Production checklist
 
 - [ ] `JWT_SECRET` rotated from dev value
