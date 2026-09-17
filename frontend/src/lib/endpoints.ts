@@ -132,7 +132,7 @@ export const api = {
   markAllRead: () => request<void>('/notifications/read-all', { method: 'PATCH' }),
 
   // analytics
-  dashboard: () => request<Dashboard>('/analytics/candidate'),
+  dashboard: () => request<Dashboard>('/analytics/dashboard'),
   candidateDashboard: () => request<CandidateDashboard>('/analytics/candidate-dashboard'),
 
   // admin
@@ -152,5 +152,5 @@ export const api = {
   adminReports: () => request<Report[]>('/admin/reports'),
   resolveReport: (id: number, status: 'RESOLVED' | 'DISMISSED') =>
     request<Report>(`/admin/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  adminActivity: (page = 1) => request<Paginated<ActivityEntry>>(`/admin/audit-logs?page=${page}`),
+  adminActivity: (page = 1) => request<Paginated<ActivityEntry>>(`/admin/activity?page=${page}`),
 }

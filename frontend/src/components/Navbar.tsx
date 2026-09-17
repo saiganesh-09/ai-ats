@@ -8,7 +8,7 @@ import { homeFor, useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
@@ -104,17 +104,19 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger render={<Button variant="outline" size="sm">{user.fullName}</Button>} />
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>
-                    {user.email}
-                    <Badge variant="secondary" className="ml-2">{user.role}</Badge>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => { router.push(homeFor(user)) }}>
-                    Dashboard
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4" /> Log out
-                  </DropdownMenuItem>
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>
+                      {user.email}
+                      <Badge variant="secondary" className="ml-2">{user.role}</Badge>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => { router.push(homeFor(user)) }}>
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={logout}>
+                      <LogOut className="mr-2 h-4 w-4" /> Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>

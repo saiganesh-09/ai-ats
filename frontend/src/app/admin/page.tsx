@@ -4,6 +4,6 @@ import { useRouter } from 'next/navigation'
 
 export default function Redirect() {
   const router = useRouter()
-  useEffect(() => { router.replace('/admin/candidate') }, [router])
+  useEffect(() => { router.replace('/admin/dashboard') }, [router])
   return null
 }

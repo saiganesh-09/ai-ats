@@ -173,7 +173,7 @@ export default function JobDetail({ params }: { params: Promise<{ id: string }> 
             ) : (
               <p className="text-sm text-muted-foreground">
                 Upload a resume first on your{' '}
-                <Link href="/candidate/resumes" className="text-primary">Resumes</Link> page.
+                <Link href="/candidate/resume" className="text-primary">Resumes</Link> page.
               </p>
             )}
           </CardContent>
