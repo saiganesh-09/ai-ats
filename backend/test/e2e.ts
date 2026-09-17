@@ -173,9 +173,10 @@ async function main() {
     mine.some((i: { id: number }) => i.id === iv.id),
   );
 
-  const notifs = await fetch(`${base}/notifications/mine`, {
+  const notifsRes = await fetch(`${base}/notifications/mine`, {
     headers: { Authorization: `Bearer ${candT}` },
   }).then((r) => r.json());
+  const notifs = notifsRes.items ?? notifsRes; // paginated envelope
   const types = notifs.map((n: { type: string }) => n.type);
   check(
     'candidate notified: submitted+status+interview',
@@ -187,9 +188,10 @@ async function main() {
     types,
   );
 
-  const recNotifs = await fetch(`${base}/notifications/mine`, {
+  const recNotifsRes = await fetch(`${base}/notifications/mine`, {
     headers: { Authorization: `Bearer ${recT}` },
   }).then((r) => r.json());
+  const recNotifs = recNotifsRes.items ?? recNotifsRes;
   check(
     'recruiter notified of new application',
     recNotifs.some((n: { type: string }) => n.type === 'application.new'),
