@@ -181,10 +181,14 @@ export interface Feedback {
 export interface Interview {
   id: number
   applicationId: number
+  type: 'ONLINE' | 'PHONE' | 'ONSITE'
   scheduledAt: string
+  endsAt: string | null
   location: string | null
   link: string | null
   notes: string | null
+  interviewer?: { fullName: string } | null
+  scheduledBy?: { fullName: string }
   application?: Application
 }
 

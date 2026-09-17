@@ -103,7 +103,16 @@ export const api = {
     request<QuestionBank>(`/applications/${id}/questions`, { method: 'PUT', body: JSON.stringify({ questions }) }),
 
   // interviews
-  scheduleInterview: (data: { applicationId: number; scheduledAt: string; location?: string; link?: string; notes?: string }) =>
+  scheduleInterview: (data: {
+    applicationId: number
+    type: 'ONLINE' | 'PHONE' | 'ONSITE'
+    scheduledAt: string
+    endsAt?: string
+    interviewerId?: number
+    location?: string
+    link?: string
+    notes?: string
+  }) =>
     request<Interview>('/interviews', { method: 'POST', body: JSON.stringify(data) }),
   myInterviews: () => request<Interview[]>('/interviews/mine'),
 

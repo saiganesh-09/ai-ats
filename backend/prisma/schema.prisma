@@ -88,7 +88,8 @@ model User {
   notifications        Notification[]
   notes                Note[]
   feedback             Feedback[]
-  interviewsScheduled  Interview[]
+  interviewsScheduled  Interview[] @relation("ScheduledBy")
+  interviewsConducted  Interview[] @relation("Interviewer")
   reports              Report[]
   refreshTokens        RefreshToken[]
   activityLogs         ActivityLog[]
@@ -329,15 +330,25 @@ model Feedback {
   @@map("feedback")
 }
 
+enum InterviewType {
+  ONLINE
+  PHONE
+  ONSITE
+}
+
 model Interview {
   id            Int         @id @default(autoincrement())
   applicationId Int         @map("application_id")
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  scheduledById Int         @map("scheduled_by_id")
-  scheduledBy   User        @relation(fields: [scheduledById], references: [id])
-  scheduledAt   DateTime    @map("scheduled_at")
-  location      String?
-  link          String?
+  scheduledById Int         @map("scheduled_by_id") // who scheduled it
+  scheduledBy   User        @relation("ScheduledBy", fields: [scheduledById], references: [id])
+  interviewerId Int?        @map("interviewer_id") // who conducts it (may differ)
+  interviewer   User?       @relation("Interviewer", fields: [interviewerId], references: [id])
+  scheduledAt   DateTime    @map("scheduled_at") // start
+  endsAt        DateTime?   @map("ends_at")
+  type          InterviewType @default(ONLINE)
+  location      String?     // for ONSITE
+  link          String?     // for ONLINE
   notes         String?
   createdAt     DateTime    @default(now()) @map("created_at")
 

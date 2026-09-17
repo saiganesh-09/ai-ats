@@ -28,7 +28,10 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
   const [questions, setQuestions] = useState<QuestionBank | null>(null)
   const [editingQuestions, setEditingQuestions] = useState(false)
   const [dirty, setDirty] = useState(false)
-  const [interview, setInterview] = useState({ scheduledAt: '', location: '', link: '', notes: '' })
+  const [interview, setInterview] = useState({
+    type: 'ONLINE' as 'ONLINE' | 'PHONE' | 'ONSITE',
+    scheduledAt: '', endsAt: '', interviewerId: '', location: '', link: '', notes: '',
+  })
 
   const { data: app, isLoading } = useQuery({
     queryKey: ['application', appId],
@@ -80,7 +83,16 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
     onError: (e) => toast.error(e.message),
   })
   const schedule = useMutation({
-    mutationFn: () => api.scheduleInterview({ applicationId: appId, ...interview }),
+    mutationFn: () => api.scheduleInterview({
+      applicationId: appId,
+      type: interview.type,
+      scheduledAt: interview.scheduledAt,
+      endsAt: interview.endsAt || undefined,
+      interviewerId: interview.interviewerId ? Number(interview.interviewerId) : undefined,
+      location: interview.location || undefined,
+      link: interview.link || undefined,
+      notes: interview.notes || undefined,
+    }),
     onSuccess: () => { toast.success('Interview scheduled'); invalidate() },
     onError: (e) => toast.error(e.message),
   })
@@ -150,17 +162,54 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
               <DialogHeader><DialogTitle>Schedule interview</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>Date & time</Label>
-                  <Input type="datetime-local" value={interview.scheduledAt}
-                    onChange={(e) => setInterview({ ...interview, scheduledAt: e.target.value })} />
+                  <Label>Type</Label>
+                  <Select value={interview.type}
+                    onValueChange={(v) => v && setInterview({ ...interview, type: v as typeof interview.type })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ONLINE">Online</SelectItem>
+                      <SelectItem value="PHONE">Phone</SelectItem>
+                      <SelectItem value="ONSITE">On-site</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Input placeholder="Location (optional)" value={interview.location}
-                  onChange={(e) => setInterview({ ...interview, location: e.target.value })} />
-                <Input placeholder="Meeting link (optional)" value={interview.link}
-                  onChange={(e) => setInterview({ ...interview, link: e.target.value })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label>Start</Label>
+                    <Input type="datetime-local" value={interview.scheduledAt}
+                      onChange={(e) => setInterview({ ...interview, scheduledAt: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>End</Label>
+                    <Input type="datetime-local" value={interview.endsAt}
+                      onChange={(e) => setInterview({ ...interview, endsAt: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Interviewer</Label>
+                  <Select value={interview.interviewerId || '__me__'}
+                    onValueChange={(v) => setInterview({ ...interview, interviewerId: v === '__me__' ? '' : (v ?? '') })}>
+                    <SelectTrigger><SelectValue placeholder="Me (default)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__me__">Me (default)</SelectItem>
+                      {company?.users?.filter((u) => u.role !== 'CANDIDATE').map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>{u.fullName} ({u.role.replace('_', ' ').toLowerCase()})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {interview.type === 'ONLINE' && (
+                  <Input placeholder="Meeting link (required)" value={interview.link}
+                    onChange={(e) => setInterview({ ...interview, link: e.target.value })} />
+                )}
+                {interview.type === 'ONSITE' && (
+                  <Input placeholder="Location / address" value={interview.location}
+                    onChange={(e) => setInterview({ ...interview, location: e.target.value })} />
+                )}
                 <Textarea placeholder="Notes for the candidate (optional)" value={interview.notes}
                   onChange={(e) => setInterview({ ...interview, notes: e.target.value })} />
-                <Button className="w-full" disabled={!interview.scheduledAt || schedule.isPending}
+                <Button className="w-full"
+                  disabled={!interview.scheduledAt || (interview.type === 'ONLINE' && !interview.link) || schedule.isPending}
                   onClick={() => schedule.mutate()}>
                   Schedule
                 </Button>

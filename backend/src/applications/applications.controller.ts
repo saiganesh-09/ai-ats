@@ -127,6 +127,18 @@ export class ApplicationsController {
         include: { job: { include: { company: { select: { name: true } } } } },
       });
       await this.recordHistory(application.id, null, ApplicationStatus.APPLIED, user.id);
+      // Candidate gets a receipt; the owning recruiter gets a new-application ping.
+      await this.notifications.notify(user.id, 'application.submitted', {
+        applicationId: application.id,
+        jobTitle: job.title,
+      });
+      if (job.recruiterId !== user.id) {
+        await this.notifications.notify(job.recruiterId, 'application.new', {
+          applicationId: application.id,
+          jobTitle: job.title,
+          candidateName: user.fullName,
+        });
+      }
       await this.activity.log(user.id, 'application.submitted', 'application', application.id);
       return application;
     } catch (e) {
@@ -153,7 +165,10 @@ export class ApplicationsController {
   @Post(':id/withdraw')
   @Roles(Role.CANDIDATE)
   async withdraw(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
-    const app = await this.prisma.application.findUnique({ where: { id } });
+    const app = await this.prisma.application.findUnique({
+      where: { id },
+      include: { job: true },
+    });
     if (!app || app.candidateId !== user.id) {
       throw new NotFoundException('Application not found');
     }
@@ -167,6 +182,12 @@ export class ApplicationsController {
       data: { status: ApplicationStatus.WITHDRAWN },
     });
     await this.recordHistory(id, app.status, ApplicationStatus.WITHDRAWN, user.id);
+    // Candidate response → the owning recruiter sees it immediately.
+    await this.notifications.notify(app.job.recruiterId, 'candidate.withdrawn', {
+      applicationId: app.id,
+      jobTitle: app.job.title,
+      candidateName: user.fullName,
+    });
     return updated;
   }
 
@@ -321,7 +342,7 @@ export class ApplicationsController {
     @Body() dto: FeedbackDto,
   ) {
     const app = await this.staffApplication(id, user);
-    return this.prisma.feedback.create({
+    const fb = await this.prisma.feedback.create({
       data: {
         applicationId: app.id,
         interviewId: dto.interviewId,
@@ -331,6 +352,16 @@ export class ApplicationsController {
       },
       include: { author: { select: { fullName: true, role: true } } },
     });
+    // Feedback lands on the owning recruiter's notification center
+    // (unless they wrote it themselves).
+    if (app.job.recruiterId !== user.id) {
+      await this.notifications.notify(app.job.recruiterId, 'feedback.new', {
+        applicationId: app.id,
+        jobTitle: app.job.title,
+        authorName: user.fullName,
+      });
+    }
+    return fb;
   }
 
   // ---------- AI actions ----------

@@ -202,7 +202,10 @@ async function main() {
         data: {
           applicationId: application.id,
           scheduledById: recruiter.id,
+          interviewerId: hiringManager.id,
+          type: 'ONLINE',
           scheduledAt: new Date(Date.now() + 3 * 86400_000),
+          endsAt: new Date(Date.now() + 3 * 86400_000 + 3600_000),
           link: 'https://meet.example.com/carol',
           notes: 'Technical round with Henry',
         },

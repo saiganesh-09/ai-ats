@@ -1,13 +1,24 @@
 'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BellRing, CheckCheck } from 'lucide-react'
 import { api } from '@/lib/endpoints'
+import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
+/** Shared notification center — all roles (was candidate-only under /dashboard). */
 export default function Notifications() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const qc = useQueryClient()
+
+  useEffect(() => {
+    if (!loading && !user) router.replace('/login')
+  }, [loading, user, router])
+
   const { data, isLoading } = useQuery({ queryKey: ['notifications'], queryFn: api.notifications })
   const markAll = useMutation({
     mutationFn: api.markAllRead,
@@ -24,17 +35,33 @@ export default function Notifications() {
     },
   })
 
+  const unreadCount = data?.filter((n) => !n.readAt).length ?? 0
+
   const describe = (type: string, payload: Record<string, unknown> | null) => {
-    if (type === 'application.status') return `Application #${payload?.applicationId} moved to ${payload?.status}`
-    if (type === 'interview.scheduled') return `Interview scheduled for ${payload?.scheduledAt ? new Date(String(payload.scheduledAt)).toLocaleString() : ''}`
-    return type
+    const p = payload ?? {}
+    const job = p.jobTitle ? ` — ${p.jobTitle}` : ''
+    switch (type) {
+      case 'application.submitted': return `Application submitted${job}`
+      case 'application.status': return `Application moved to ${p.status ?? 'a new stage'}${job}`
+      case 'application.new': return `New application from ${p.candidateName ?? 'a candidate'}${job}`
+      case 'candidate.withdrawn': return `${p.candidateName ?? 'Candidate'} withdrew${job}`
+      case 'interview.scheduled': return `${p.type ?? 'Interview'} interview scheduled for ${p.scheduledAt ? new Date(String(p.scheduledAt)).toLocaleString() : '—'}${job}`
+      case 'interview.assigned': return `You're assigned to interview${p.candidateName ? ` ${p.candidateName}` : ''} for ${p.jobTitle ?? 'a job'}`
+      case 'feedback.new': return `New interview feedback from ${p.authorName ?? 'a colleague'}${job}`
+      default: return type
+    }
   }
+
+  if (loading || !user) return null
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Notifications</h1>
-        <Button variant="outline" size="sm" onClick={() => markAll.mutate()}>
+        <div>
+          <h1 className="text-2xl font-bold">Notifications</h1>
+          <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
+        </div>
+        <Button variant="outline" size="sm" disabled={!unreadCount} onClick={() => markAll.mutate()}>
           <CheckCheck className="mr-2 h-4 w-4" /> Mark all read
         </Button>
       </div>
