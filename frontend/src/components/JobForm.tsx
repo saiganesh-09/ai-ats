@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -19,7 +20,8 @@ const schema = z.object({
   salaryMin: z.string().optional(),
   salaryMax: z.string().optional(),
   educationRequirement: z.string().optional(),
-  applicationDeadline: z.string().optional(),
+  applicationDeadline: z.string().optional()
+    .refine((v) => !v || new Date(v) > new Date(), 'Deadline must be a future date'),
   openings: z.string().optional(),
   requiredSkills: z.string().optional(),
   preferredSkills: z.string().optional(),
@@ -51,10 +53,11 @@ export function JobForm({ hiringManagers, pending, onSubmit }: {
 }) {
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<JobFormData>({
     resolver: zodResolver(schema),
+    defaultValues: { employmentType: 'FULL_TIME', experienceLevel: 'MID', workMode: 'ONSITE' },
   })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+    <form onSubmit={handleSubmit(onSubmit, () => toast.error('Please fix the highlighted fields'))} className="space-y-3">
       <div className="space-y-1.5">
         <Label>Title</Label>
         <Input {...register('title')} />
@@ -72,6 +75,7 @@ export function JobForm({ hiringManagers, pending, onSubmit }: {
               <SelectItem value="INTERNSHIP">Internship</SelectItem>
             </SelectContent>
           </Select>
+          {errors.employmentType && <p className="text-xs text-destructive">{errors.employmentType.message}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Level</Label>
@@ -84,6 +88,7 @@ export function JobForm({ hiringManagers, pending, onSubmit }: {
               <SelectItem value="LEAD">Lead</SelectItem>
             </SelectContent>
           </Select>
+          {errors.experienceLevel && <p className="text-xs text-destructive">{errors.experienceLevel.message}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Work mode</Label>
@@ -95,6 +100,7 @@ export function JobForm({ hiringManagers, pending, onSubmit }: {
               <SelectItem value="ONSITE">On-site</SelectItem>
             </SelectContent>
           </Select>
+          {errors.workMode && <p className="text-xs text-destructive">{errors.workMode.message}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -144,6 +150,7 @@ export function JobForm({ hiringManagers, pending, onSubmit }: {
         <div className="space-y-1.5">
           <Label>Application deadline</Label>
           <Input type="date" {...register('applicationDeadline')} />
+          {errors.applicationDeadline && <p className="text-xs text-destructive">{errors.applicationDeadline.message}</p>}
         </div>
       </div>
       {hiringManagers.length > 0 && (

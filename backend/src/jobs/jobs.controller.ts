@@ -269,7 +269,15 @@ export class JobsController {
     await this.assertHiringManager(dto.hiringManagerId, user.companyId);
     const { requiredSkills, preferredSkills, ...data } = dto;
     const job = await this.prisma.job.create({
-      data: { ...data, companyId: user.companyId, recruiterId: user.id },
+      data: {
+        ...data,
+        // <input type="date"> sends "YYYY-MM-DD"; Prisma needs a real DateTime.
+        applicationDeadline: dto.applicationDeadline
+          ? new Date(dto.applicationDeadline)
+          : null,
+        companyId: user.companyId,
+        recruiterId: user.id,
+      },
     });
     await this.syncSkills(job.id, requiredSkills, preferredSkills, job);
     await this.activity.log(user.id, 'job.created', 'job', job.id);
@@ -291,7 +299,12 @@ export class JobsController {
     const { requiredSkills, preferredSkills, ...data } = dto;
     const updated = await this.prisma.job.update({
       where: { id: job.id },
-      data,
+      data: {
+        ...data,
+        ...(dto.applicationDeadline !== undefined
+          ? { applicationDeadline: new Date(dto.applicationDeadline) }
+          : {}),
+      },
     });
     // Re-sync skills when text OR explicit skill lists changed.
     if (
