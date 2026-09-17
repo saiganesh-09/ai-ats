@@ -109,7 +109,11 @@ export class ApplicationsController {
   @Roles(Role.CANDIDATE)
   async apply(@CurrentUser() user: User, @Body() dto: ApplyDto) {
     const job = await this.prisma.job.findUnique({ where: { id: dto.jobId } });
-    if (!job || job.status !== JobStatus.PUBLISHED) {
+    if (
+      !job ||
+      job.status !== JobStatus.PUBLISHED ||
+      (job.applicationDeadline && job.applicationDeadline < new Date())
+    ) {
       throw new NotFoundException('Job not available');
     }
     const resume = await this.prisma.resume.findUnique({

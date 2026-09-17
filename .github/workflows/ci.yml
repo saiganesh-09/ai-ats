@@ -1,0 +1,69 @@
+name: CI
+
+# Install → lint → typecheck → test → build, per spec §29.
+# Backend additionally runs the e2e against a real Postgres service.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ats_user
+          POSTGRES_PASSWORD: ats_dev_password
+          POSTGRES_DB: ai_ats
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ats_user -d ai_ats"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ats_user:ats_dev_password@localhost:5432/ai_ats
+      JWT_SECRET: ci-secret
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: backend/package-lock.json }
+      - run: npm ci
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npx tsc -p tsconfig.build.json --noEmit   # type check
+        working-directory: backend
+      - run: npm test                                 # unit tests
+        working-directory: backend
+      - run: npm run build                            # build
+        working-directory: backend
+      # integration/e2e: migrate, boot the built app, run the workflow checks
+      - run: npx prisma migrate deploy
+        working-directory: backend
+      - run: node dist/src/main.js &
+        working-directory: backend
+        env:
+          CORS_ORIGIN: http://localhost:3000
+      - run: sleep 3 && npm run test:e2e
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run lint --if-present                # lint
+        working-directory: frontend
+      - run: npx tsc --noEmit                         # type check
+        working-directory: frontend
+      - run: npm test                                 # unit tests
+        working-directory: frontend
+      - run: npm run build                            # build
+        working-directory: frontend
