@@ -9,6 +9,7 @@ import argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
 import type { Response } from 'express';
 import type { User } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 
@@ -28,6 +29,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private activity: ActivityService,
+    private email: EmailService,
   ) {}
 
   async register(dto: {
@@ -50,6 +52,7 @@ export class AuthService {
       },
     });
     await this.activity.log(user.id, 'user.registered', 'user', user.id);
+    this.email.welcome(user.email, user.fullName); // fire-and-forget
     return user;
   }
 

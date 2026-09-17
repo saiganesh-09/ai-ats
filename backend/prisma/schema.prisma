@@ -350,6 +350,7 @@ model Interview {
   location      String?     // for ONSITE
   link          String?     // for ONLINE
   notes         String?
+  reminderSentAt DateTime?  @map("reminder_sent_at") // interview-reminder email dedupe
   createdAt     DateTime    @default(now()) @map("created_at")
 
   feedback Feedback[]

@@ -13,6 +13,7 @@ import { IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validat
 import { ApplicationStatus, InterviewType, Role, type User } from '@prisma/client';
 import { ActivityService } from '../activity/activity.service';
 import { CurrentUser, Roles } from '../common/decorators';
+import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.controller';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -35,6 +36,7 @@ export class InterviewsController {
     private prisma: PrismaService,
     private notifications: NotificationsService,
     private activity: ActivityService,
+    private email: EmailService,
   ) {}
 
   /** Staff schedules an interview; application auto-advances to INTERVIEW
@@ -44,7 +46,10 @@ export class InterviewsController {
   async schedule(@CurrentUser() user: User, @Body() dto: ScheduleDto) {
     const app = await this.prisma.application.findUnique({
       where: { id: dto.applicationId },
-      include: { job: true },
+      include: {
+        job: true,
+        candidate: { select: { email: true, fullName: true } },
+      },
     });
     if (!app) throw new NotFoundException('Application not found');
     if (!user.isSuperadmin) {
@@ -120,6 +125,10 @@ export class InterviewsController {
         scheduledAt: dto.scheduledAt,
       });
     }
+    this.email.interviewInvitation(
+      app.candidate.email, app.candidate.fullName, app.job.title,
+      dto.type, new Date(dto.scheduledAt), dto.link,
+    );
     await this.activity.log(user.id, 'interview.scheduled', 'interview', interview.id);
     return interview;
   }

@@ -33,6 +33,7 @@ import {
 } from '@prisma/client';
 import { ActivityService } from '../activity/activity.service';
 import { AiService } from '../ai/ai.service';
+import { EmailService } from '../email/email.service';
 import { CurrentUser, Roles } from '../common/decorators';
 import { NotificationsService } from '../notifications/notifications.controller';
 import { PrismaService } from '../prisma/prisma.service';
@@ -86,6 +87,7 @@ export class ApplicationsController {
     private ai: AiService,
     private activity: ActivityService,
     private notifications: NotificationsService,
+    private email: EmailService,
   ) {}
 
   /** Record a status transition — the immutable audit trail of the pipeline. */
@@ -132,6 +134,7 @@ export class ApplicationsController {
         applicationId: application.id,
         jobTitle: job.title,
       });
+      this.email.applicationConfirmation(user.email, user.fullName, job.title);
       if (job.recruiterId !== user.id) {
         await this.notifications.notify(job.recruiterId, 'application.new', {
           applicationId: application.id,
@@ -287,6 +290,10 @@ export class ApplicationsController {
       jobId: app.jobId,
       status: dto.status,
     });
+    this.email.statusUpdate(app.candidate.email, app.candidate.fullName, app.job.title, dto.status);
+    if (dto.status === ApplicationStatus.OFFER) {
+      this.email.offerNotification(app.candidate.email, app.candidate.fullName, app.job.title);
+    }
     await this.activity.log(
       user.id, 'application.status_changed', 'application', app.id,
       { status: dto.status },
@@ -456,7 +463,11 @@ export class ApplicationsController {
   private async staffApplication(id: number, user: User) {
     const app = await this.prisma.application.findUnique({
       where: { id },
-      include: { job: true, resume: true },
+      include: {
+        job: true,
+        resume: true,
+        candidate: { select: { email: true, fullName: true } },
+      },
     });
     if (!app) throw new NotFoundException('Application not found');
     await this.staffJob(app.jobId, user);
