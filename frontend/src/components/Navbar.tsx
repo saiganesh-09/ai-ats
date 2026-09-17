@@ -120,8 +120,8 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" render={<Link href="/login" />}>Log in</Button>
-              <Button size="sm" render={<Link href="/register" />}>Sign up</Button>
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/login" />}>Log in</Button>
+              <Button size="sm" nativeButton={false} render={<Link href="/register" />}>Sign up</Button>
             </>
           )}
         </div>

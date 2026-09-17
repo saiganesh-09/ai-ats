@@ -42,10 +42,10 @@ export default function Landing() {
             candidates through your pipeline — all in one place.
           </p>
           <div className="mt-8 flex justify-center gap-3">
-            <Button size="lg" render={<Link href="/jobs" />}>
+            <Button size="lg" nativeButton={false} render={<Link href="/jobs" />}>
               Browse open roles <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" render={<Link href="/register" />}>
+            <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/register" />}>
               For recruiters
             </Button>
           </div>

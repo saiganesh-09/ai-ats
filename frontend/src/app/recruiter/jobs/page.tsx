@@ -121,7 +121,7 @@ function JobRow({ job, onAction, onAnalyze }: {
           {job.status === 'PAUSED' && <Button size="sm" onClick={() => onAction('publish')}>Resume</Button>}
           {job.status === 'PUBLISHED' && <Button variant="outline" size="sm" onClick={() => onAction('pause')}>Pause</Button>}
           {job.status !== 'CLOSED' && <Button variant="outline" size="sm" onClick={() => onAction('close')}>Close</Button>}
-          <Button variant="secondary" size="sm" render={<Link href={`/recruiter/jobs/${job.id}`} />}>
+          <Button variant="secondary" size="sm" nativeButton={false} render={<Link href={`/recruiter/jobs/${job.id}`} />}>
             <Users className="mr-1 h-4 w-4" />Pipeline
           </Button>
         </div>
