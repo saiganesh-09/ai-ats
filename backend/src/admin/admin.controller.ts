@@ -236,10 +236,14 @@ export class AdminController {
     if (!user.isSuperadmin && report.job.companyId !== user.companyId) {
       throw new ForbiddenException('Not your company\'s report');
     }
-    return this.prisma.report.update({
+    const updated = await this.prisma.report.update({
       where: { id },
       data: { status: dto.status },
     });
+    await this.activity.log(
+      user.id, 'report.resolved', 'report', id, { status: dto.status },
+    );
+    return updated;
   }
 
   @Get('activity')

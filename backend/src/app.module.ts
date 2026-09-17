@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -12,6 +12,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard, RolesGuard } from './common/guards';
+import { RequestLoggingInterceptor } from './common/logging.interceptor';
 import { CompaniesModule } from './companies/companies.module';
 import { EmailModule } from './email/email.module';
 import { InterviewsModule } from './interviews/interviews.module';
@@ -58,6 +59,8 @@ import { StorageModule } from './storage/storage.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Structured JSON request log — metadata only, never bodies/tokens.
+    { provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },
   ],
 })
 export class AppModule {}

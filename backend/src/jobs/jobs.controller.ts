@@ -264,6 +264,9 @@ export class JobsController {
         dto.description !== undefined || dto.requirements !== undefined) {
       await this.syncSkills(updated.id, requiredSkills, preferredSkills, updated);
     }
+    await this.activity.log(
+      user.id, 'job.updated', 'job', id, { fields: Object.keys(dto) },
+    );
     return updated;
   }
 
@@ -290,6 +293,7 @@ export class JobsController {
     if (job.status !== JobStatus.PUBLISHED) {
       throw new BadRequestException('Only published jobs can be paused');
     }
+    await this.activity.log(user.id, 'job.paused', 'job', id);
     return this.prisma.job.update({
       where: { id: job.id },
       data: { status: JobStatus.PAUSED },
