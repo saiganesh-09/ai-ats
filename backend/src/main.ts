@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -8,6 +9,8 @@ async function bootstrap() {
 
   // The Next.js app runs on :3000, API on :3001 — different origins,
   // so CORS headers are required. credentials:true allows the refresh cookie.
+  // Security headers (X-Frame-Options, CSP basics, nosniff…) — standard for production.
+  app.use(helmet());
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
     credentials: true,
