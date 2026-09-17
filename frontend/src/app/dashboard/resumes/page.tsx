@@ -44,7 +44,7 @@ export default function Resumes() {
         <div>
           <h1 className="text-2xl font-bold">My resumes</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Upload a PDF or TXT — AI extracts your skills into your profile automatically.
+            Upload a PDF, DOCX, or TXT — AI extracts your skills into your profile automatically.
           </p>
         </div>
         <Button onClick={() => fileInput.current?.click()} disabled={uploading}>
@@ -52,7 +52,7 @@ export default function Resumes() {
           {uploading ? 'Parsing…' : 'Upload resume'}
         </Button>
         <input
-          ref={fileInput} type="file" accept=".pdf,.txt" hidden
+          ref={fileInput} type="file" accept=".pdf,.docx,.txt" hidden
           onChange={(e) => {
             e.target.files?.[0] && upload(e.target.files[0])
             e.target.value = ''
@@ -69,9 +69,19 @@ export default function Resumes() {
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{r.originalFilename}</p>
+                    <p className="font-medium">
+                      {r.originalFilename}
+                      <Badge
+                        variant={r.parsedStatus === 'PARSED' ? 'secondary' : 'outline'}
+                        className="ml-2 text-[10px]"
+                      >
+                        {r.parsedStatus === 'PARSED' ? 'AI parsed' : r.parsedStatus === 'FAILED' ? 'parse failed' : 'pending'}
+                      </Badge>
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(r.createdAt).toLocaleString()}
+                      {r.parsed?.email ? ` · ${r.parsed.email}` : ''}
+                      {r.parsed?.phone ? ` · ${r.parsed.phone}` : ''}
                     </p>
                   </div>
                 </div>

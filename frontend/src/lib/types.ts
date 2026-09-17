@@ -85,16 +85,22 @@ export interface JobSearchParams {
 }
 
 export interface ParsedResume {
+  name?: string
+  email?: string
+  phone?: string
   summary?: string
   skills?: string[]
-  experience?: unknown[]
-  education?: unknown[]
+  experience?: Record<string, unknown>[]
+  education?: Record<string, unknown>[]
+  certifications?: Record<string, unknown>[]
+  projects?: Record<string, unknown>[]
 }
 
 export interface Resume {
   id: number
   originalFilename: string
   parsed: ParsedResume | null
+  parsedStatus: 'PENDING' | 'PARSED' | 'FAILED'
   createdAt: string
 }
 

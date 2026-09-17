@@ -17,16 +17,25 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { Role, type User } from '@prisma/client';
+import { Prisma, Role, type User } from '@prisma/client';
+import mammoth from 'mammoth';
 import { extractText } from 'unpdf';
 import { ActivityService } from '../activity/activity.service';
 import { AiService } from '../ai/ai.service';
 import { CurrentUser, Roles } from '../common/decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { SkillsService } from '../skills/skills.service';
+import { sanitizeFilename, sanitizeParsed } from './parsed-resume';
 import { resumeKey, STORAGE, type ObjectStorage } from '../storage/storage.service';
 
 const MAX_SIZE = 5 * 1024 * 1024;
+
+// Extension + MIME whitelist — both checked (extension alone is spoofable).
+const ALLOWED = new Map([
+  ['pdf', new Set(['application/pdf'])],
+  ['docx', new Set(['application/vnd.openxmlformats-officedocument.wordprocessingml.document'])],
+  ['txt', new Set(['text/plain'])],
+]);
 
 @Controller('resumes')
 export class ResumesController {
@@ -48,25 +57,47 @@ export class ResumesController {
   async upload(@CurrentUser() user: User, @UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
     if (file.size > MAX_SIZE) throw new BadRequestException('File too large (max 5MB)');
+    if (file.size === 0) throw new BadRequestException('Empty file');
 
-    const rawText = await this.extract(file);
-    const key = resumeKey(file.originalname);
+    // Validate type by extension AND declared mimetype.
+    const ext = sanitizeFilename(file.originalname).split('.').pop()?.toLowerCase() ?? '';
+    const mimes = ALLOWED.get(ext);
+    if (!mimes) {
+      throw new UnprocessableEntityException('Only .pdf, .docx and .txt resumes are supported');
+    }
+    if (file.mimetype && !mimes.has(file.mimetype) && file.mimetype !== 'application/octet-stream') {
+      throw new UnprocessableEntityException(`Unexpected file type: ${file.mimetype}`);
+    }
+
+    const filename = sanitizeFilename(file.originalname);
+    const rawText = await this.extract(file, ext);
+    const key = resumeKey(filename);
     await this.storage.put(key, file.buffer);
 
-    const parsed = await this.ai.parseResume(rawText);
+    // AI output is untrusted input — sanitize before it touches the DB.
+    let parsed = null;
+    let parsedStatus: 'PARSED' | 'FAILED' = 'FAILED';
+    try {
+      parsed = sanitizeParsed(await this.ai.parseResume(rawText));
+      parsedStatus = 'PARSED';
+    } catch {
+      // Parsing is best-effort: the file + raw text are still usable for apply/score.
+    }
+
     const resume = await this.prisma.resume.create({
       data: {
         candidateId: user.id,
-        originalFilename: file.originalname,
+        originalFilename: filename,
         storageKey: key,
         rawText,
-        parsed: parsed as object,
+        parsed: (parsed ?? undefined) as Prisma.InputJsonValue | undefined,
+        parsedStatus,
       },
     });
 
     // Parse once, candidate edits after: merge extracted skills into the
     // normalized skills taxonomy (source='resume' tracks provenance).
-    if (parsed.skills?.length) {
+    if (parsed?.skills?.length) {
       await this.skills.mergeCandidateSkills(user.id, parsed.skills, 'resume');
     }
 
@@ -127,17 +158,19 @@ export class ResumesController {
     res.send(data);
   }
 
-  private async extract(file: Express.Multer.File): Promise<string> {
-    const name = file.originalname.toLowerCase();
-    if (name.endsWith('.txt')) return file.buffer.toString('utf-8');
-    if (name.endsWith('.pdf')) {
-      const { text } = await extractText(new Uint8Array(file.buffer));
-      const joined = Array.isArray(text) ? text.join('\n') : String(text);
-      if (!joined.trim()) {
-        throw new UnprocessableEntityException('Could not extract text (scanned PDF?)');
-      }
-      return joined;
+  private async extract(file: Express.Multer.File, ext: string): Promise<string> {
+    if (ext === 'txt') return file.buffer.toString('utf-8');
+    let text = '';
+    if (ext === 'pdf') {
+      const { text: t } = await extractText(new Uint8Array(file.buffer));
+      text = Array.isArray(t) ? t.join('\n') : String(t);
+    } else if (ext === 'docx') {
+      const { value } = await mammoth.extractRawText({ buffer: file.buffer });
+      text = value;
     }
-    throw new UnprocessableEntityException('Only .pdf and .txt resumes are supported');
+    if (!text.trim()) {
+      throw new UnprocessableEntityException('Could not extract text (scanned or corrupt file?)');
+    }
+    return text;
   }
 }

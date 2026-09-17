@@ -233,6 +233,12 @@ model Job {
   @@map("jobs")
 }
 
+enum ParsedStatus {
+  PENDING
+  PARSED
+  FAILED
+}
+
 model Resume {
   id               Int      @id @default(autoincrement())
   candidateId      Int      @map("candidate_id")
@@ -241,6 +247,7 @@ model Resume {
   storageKey       String   @map("storage_key") // object-storage key, not a path
   rawText          String   @map("raw_text")
   parsed           Json?
+  parsedStatus     ParsedStatus @default(PENDING) @map("parsed_status")
   createdAt        DateTime @default(now()) @map("created_at")
 
   applications Application[]

@@ -9,10 +9,15 @@ export interface MatchResult {
 }
 
 export interface ParsedResume {
+  name?: string;
+  email?: string;
+  phone?: string;
   summary: string;
   skills: string[];
   experience: unknown[];
   education: unknown[];
+  certifications?: unknown[];
+  projects?: unknown[];
 }
 
 const SKILLS_VOCAB = [
@@ -63,7 +68,8 @@ export class AiService {
   parseResume(rawText: string): Promise<ParsedResume> {
     const prompt = `You are an ATS resume parser. Extract structured data from the
 resume text below. Respond with ONLY valid JSON in exactly this shape:
-{"summary":"2-3 sentence professional summary","skills":["skill1"],"experience":[{"title":"...","company":"...","years":2,"highlights":["..."]}],"education":[{"degree":"...","institution":"...","year":2020}]}
+{"name":"full name","email":"...","phone":"...","summary":"2-3 sentence professional summary","skills":["skill1"],"experience":[{"title":"...","company":"...","years":2,"description":"..."}],"education":[{"degree":"...","institution":"...","year":2020}],"certifications":[{"name":"...","issuer":"...","year":2021}],"projects":[{"name":"...","description":"...","technologies":"..."}]}
+Omit a field entirely if the resume does not contain it.
 
 RESUME TEXT:
 ${rawText.slice(0, 12000)}`;
@@ -164,11 +170,18 @@ DESCRIPTION: ${description.slice(0, 6000)}`;
 
   private mockParse(rawText: string): ParsedResume {
     const firstLine = rawText.split('\n').find((l) => l.trim()) ?? '';
+    const email = rawText.match(/[\w.+-]+@[\w-]+\.[\w.]+/)?.[0];
+    const phone = rawText.match(/(\+?\d[\d\-() ]{6,}\d)/)?.[1]?.trim();
     return {
+      name: firstLine.slice(0, 80),
+      ...(email ? { email } : {}),
+      ...(phone ? { phone: phone.slice(0, 20) } : {}),
       summary: firstLine.slice(0, 300) || 'No summary extracted',
       skills: this.foundSkills(rawText),
       experience: [],
       education: [],
+      certifications: [],
+      projects: [],
     };
   }
 

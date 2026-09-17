@@ -56,7 +56,7 @@ erDiagram
 | `experiences` | id | `user_id`→users | Candidate work history |
 | `educations` | id | `user_id`→users | Candidate education |
 | `certifications` | id | `user_id`→users | Candidate certs |
-| `resumes` | id | `candidate_id`→users | storage_key + raw_text + parsed JSONB |
+| `resumes` | id | `candidate_id`→users | storage_key + raw_text + parsed JSONB + parsed_status |
 | `jobs` | id | `company_id`, `recruiter_id`, `hiring_manager_id` | Posting + lifecycle + search fields |
 | `applications` | id | `job_id`, `candidate_id`, `resume_id`, `assigned_recruiter_id` | Join table + state machine |
 | `application_status_history` | id | `application_id`, `changed_by_id` | Immutable transition log |
