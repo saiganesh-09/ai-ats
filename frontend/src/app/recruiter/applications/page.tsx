@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/endpoints'
 import { STATUS_ORDER, type ApplicationStatus } from '@/lib/types'
 import { ScoreBadge, StatusBadge } from '@/components/badges'
+import { Pager } from '@/components/Pager'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,18 +19,19 @@ const ALL = '__all__'
 export default function Applications() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<string>(ALL)
+  const [page, setPage] = useState(1)
   const { data, isLoading } = useQuery({
-    queryKey: ['company-applications', q],
-    queryFn: () => api.companyApplications(q || undefined),
+    queryKey: ['company-applications', q, page],
+    queryFn: () => api.companyApplications({ q: q || undefined, page }),
   })
-  const rows = data?.filter((a) => status === ALL || a.status === status) ?? []
+  const rows = data?.items.filter((a) => status === ALL || a.status === status) ?? []
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Applications</h1>
         <div className="flex gap-2">
-          <Input placeholder="Search candidates…" className="w-56" onChange={(e) => setQ(e.target.value)} />
+          <Input placeholder="Search candidates…" className="w-56" onChange={(e) => { setQ(e.target.value); setPage(1) }} />
           <Select value={status} onValueChange={(v) => setStatus(v ?? ALL)}>
             <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -65,6 +67,7 @@ export default function Applications() {
           )}
         </CardContent>
       </Card>
+      {data && <Pager page={page} totalPages={data.totalPages} total={data.total} onPage={setPage} />}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Pager } from '@/components/Pager'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const ROLES = ['CANDIDATE', 'RECRUITER', 'HIRING_MANAGER', 'ADMIN']
@@ -19,11 +20,13 @@ export default function AdminUsers() {
   const qc = useQueryClient()
   const [q, setQ] = useState('')
   const [role, setRole] = useState<string>('')
+  const [page, setPage] = useState(1)
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ['adminUsers', q, role],
-    queryFn: () => api.adminUsers({ q: q || undefined, role: role || undefined }),
+  const { data, isLoading } = useQuery({
+    queryKey: ['adminUsers', q, role, page],
+    queryFn: () => api.adminUsers({ q: q || undefined, role: role || undefined, page }),
   })
+  const users = data?.items
   const setStatus = useMutation({
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) => api.setUserStatus(id, isActive),
     onSuccess: (u) => {
@@ -42,10 +45,10 @@ export default function AdminUsers() {
           onChange={(e) => {
             const v = e.target.value
             clearTimeout((AdminUsers as { t?: number }).t)
-            ;(AdminUsers as { t?: number }).t = window.setTimeout(() => setQ(v), 300)
+            ;(AdminUsers as { t?: number }).t = window.setTimeout(() => { setQ(v); setPage(1) }, 300)
           }}
         />
-        <Select value={role} onValueChange={(v) => setRole(!v || v === 'ALL' ? '' : v)}>
+        <Select value={role} onValueChange={(v) => { setRole(!v || v === 'ALL' ? '' : v); setPage(1) }}>
           <SelectTrigger className="w-48"><SelectValue placeholder="All roles" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All roles</SelectItem>
@@ -100,6 +103,7 @@ export default function AdminUsers() {
           )}
         </CardContent>
       </Card>
+      {data && <Pager page={page} totalPages={data.totalPages} total={data.total} onPage={setPage} />}
     </div>
   )
 }

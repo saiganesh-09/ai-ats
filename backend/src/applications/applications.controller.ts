@@ -204,25 +204,38 @@ export class ApplicationsController {
    *  the /recruiter/candidates + /recruiter/applications index pages. */
   @Get('company')
   @Roles(...STAFF)
-  companyApplications(@CurrentUser() user: User, @Query('q') q?: string) {
+  async companyApplications(
+    @CurrentUser() user: User,
+    @Query('q') q?: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
+  ) {
     const jobWhere =
       user.isSuperadmin ? {}
       : user.role === Role.HIRING_MANAGER
         ? { hiringManagerId: user.id }
         : { companyId: user.companyId ?? -1 };
-    return this.prisma.application.findMany({
-      where: {
-        job: jobWhere,
-        ...(q ? { candidate: { fullName: { contains: q, mode: 'insensitive' } } } : {}),
-      },
-      include: {
-        candidate: { select: { id: true, fullName: true, email: true } },
-        job: { select: { id: true, title: true } },
-        assignedRecruiter: { select: { fullName: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
+    const where = {
+      job: jobWhere,
+      ...(q ? { candidate: { fullName: { contains: q, mode: 'insensitive' as const } } } : {}),
+    };
+    const p = Math.max(1, Number(page) || 1);
+    const size = Math.min(100, Math.max(1, Number(pageSize) || 25));
+    const [items, total] = await Promise.all([
+      this.prisma.application.findMany({
+        where,
+        include: {
+          candidate: { select: { id: true, fullName: true, email: true } },
+          job: { select: { id: true, title: true } },
+          assignedRecruiter: { select: { fullName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (p - 1) * size,
+        take: size,
+      }),
+      this.prisma.application.count({ where }),
+    ]);
+    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
   }
 
   /** Applicants for one job, with search/filter/sort. Company- or HM-scoped. */

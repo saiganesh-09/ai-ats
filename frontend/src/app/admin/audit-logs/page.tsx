@@ -1,14 +1,18 @@
 'use client'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/endpoints'
+import { Pager } from '@/components/Pager'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function AdminActivity() {
-  const { data: activity, isLoading } = useQuery({
-    queryKey: ['activity'],
-    queryFn: api.adminActivity,
+  const [page, setPage] = useState(1)
+  const { data, isLoading } = useQuery({
+    queryKey: ['activity', page],
+    queryFn: () => api.adminActivity(page),
   })
+  const activity = data?.items
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -30,6 +34,7 @@ export default function AdminActivity() {
           {activity?.length === 0 && <p className="p-6 text-center text-muted-foreground">No activity yet.</p>}
         </CardContent>
       </Card>
+      {data && <Pager page={page} totalPages={data.totalPages} total={data.total} onPage={setPage} />}
     </div>
   )
 }

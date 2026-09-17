@@ -78,7 +78,7 @@ Roles: `CANDIDATE` `RECRUITER` `HIRING_MANAGER` `ADMIN` (+`isSuperadmin` flag).
 | POST | `/applications` | CANDIDATE | `{jobId, resumeId, coverNote?}` | `Application` (status=APPLIED, history row, notifications+emails to both sides) | 404 job/resume, 400 duplicate / deadline |
 | GET | `/applications/mine` | CANDIDATE | — | Own applications + job + company | — |
 | POST | `/applications/:id/withdraw` | CANDIDATE | — | `Application` → WITHDRAWN (only from APPLIED/SCREENING; recruiter notified) | 400 wrong stage, 404 |
-| GET | `/applications/company` | Staff | `?q=` (candidate name) | All company applications + candidate + job + assignee (HM: assigned jobs) | 403 |
+| GET | `/applications/company` | Staff | `?q=, page=, pageSize=` | `Paginated<Application>` + candidate + job + assignee (HM: assigned jobs) | 403 |
 | GET | `/applications/job/:jobId` | Staff | `?q=, status=, sort=score\|score_asc\|oldest` | Pipeline list for one job | 403 |
 | GET | `/applications/:id` | Staff | — | Detail: candidate profile, resume.parsed, notes, feedback, history, aiSummary, aiQuestions | 403 |
 | PATCH | `/applications/:id/status` | Staff | `{status, reason?}` | `Application`; writes status_history + notification + email (+offer email on OFFER) | 400 bad status/stage |
@@ -104,7 +104,7 @@ Background: hourly cron emails+notifies candidates ~24h before each interview (`
 
 | Method | URL | Auth | Body | Response |
 |---|---|---|---|---|
-| GET | `/notifications/mine` | Any | — | `Notification[]` (newest first) |
+| GET | `/notifications/mine` | Any | `?page=, pageSize=` | `Paginated<Notification>` (newest first) |
 | GET | `/notifications/unread-count` | Any | — | `{count}` — navbar polls every 30s |
 | PATCH | `/notifications/:id/read` | Any | — | `Notification` (own rows only) |
 | PATCH | `/notifications/read-all` | Any | — | `{count}` updated |
@@ -123,7 +123,7 @@ Types: `application.submitted`, `application.status`, `application.new`, `candid
 | Method | URL | Body / Query | Response | Errors |
 |---|---|---|---|---|
 | GET | `/admin/analytics` | — | `{totalUsers, totalCandidates, totalRecruiters, totalCompanies, totalJobs, activeJobs, totalApplications, successfulHires, trends}` | — |
-| GET | `/admin/users` | `?q=, role=` | `User[]` | — |
+| GET | `/admin/users` | `?q=, role=, page=, pageSize=` | `Paginated<User>` | — |
 | PATCH | `/admin/users/:id/status` | `{isActive}` | `User` (suspend/activate — suspended can't log in) | 403 |
 | GET | `/admin/companies` | — | `Company[] + _count{users, jobs}` | — |
 | GET | `/admin/jobs` | — | `Job[] + company + recruiter + _count.applications` | — |
@@ -131,7 +131,7 @@ Types: `application.submitted`, `application.status`, `application.new`, `candid
 | DELETE | `/admin/jobs/:id` | — | `{ok:true}` — report workflow | 403, 404 |
 | GET | `/admin/reports` | — | `Report[] + reporter + job` | — |
 | PATCH | `/admin/reports/:id` | `{status}` | `Report` (OPEN→REVIEWED\|DISMISSED) | 403 |
-| GET | `/admin/activity` | — | `ActivityLog[]` audit trail | — |
+| GET | `/admin/activity` | `?page=, pageSize=` | `Paginated<ActivityLog>` audit trail | — |
 
 ## Data notes
 

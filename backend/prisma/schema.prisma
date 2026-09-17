@@ -283,6 +283,7 @@ model Application {
   @@unique([jobId, candidateId]) // "apply once" enforced at the DB level
   @@index([candidateId])
   @@index([jobId, status])
+  @@index([status]) // dashboard GROUP BY status — composite doesn't cover it
   @@map("applications")
 }
 

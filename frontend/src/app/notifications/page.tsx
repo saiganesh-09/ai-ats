@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BellRing, CheckCheck } from 'lucide-react'
@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Pager } from '@/components/Pager'
 
 /** Shared notification center — all roles (was candidate-only under /candidate). */
 export default function Notifications() {
@@ -19,7 +20,11 @@ export default function Notifications() {
     if (!loading && !user) router.replace('/login')
   }, [loading, user, router])
 
-  const { data, isLoading } = useQuery({ queryKey: ['notifications'], queryFn: api.notifications })
+  const [page, setPage] = useState(1)
+  const { data, isLoading } = useQuery({
+    queryKey: ['notifications', page],
+    queryFn: () => api.notifications(page),
+  })
   const markAll = useMutation({
     mutationFn: api.markAllRead,
     onSuccess: () => {
@@ -35,7 +40,7 @@ export default function Notifications() {
     },
   })
 
-  const unreadCount = data?.filter((n) => !n.readAt).length ?? 0
+  const unreadCount = data?.items.filter((n) => !n.readAt).length ?? 0
 
   const describe = (type: string, payload: Record<string, unknown> | null) => {
     const p = payload ?? {}
@@ -67,7 +72,7 @@ export default function Notifications() {
       </div>
       <div className="mt-6 space-y-2">
         {isLoading && [1, 2].map((i) => <Skeleton key={i} className="h-16" />)}
-        {data?.map((n) => (
+        {data?.items.map((n) => (
           <Card
             key={n.id}
             className={`cursor-pointer ${n.readAt ? 'opacity-60' : 'border-primary/30'}`}
@@ -82,8 +87,9 @@ export default function Notifications() {
             </CardContent>
           </Card>
         ))}
-        {data?.length === 0 && <p className="py-10 text-center text-muted-foreground">No notifications yet.</p>}
+        {data?.items.length === 0 && <p className="py-10 text-center text-muted-foreground">No notifications yet.</p>}
       </div>
+      {data && <Pager page={page} totalPages={data.totalPages} total={data.total} onPage={setPage} />}
     </div>
   )
 }

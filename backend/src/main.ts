@@ -1,5 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -26,6 +27,21 @@ async function bootstrap() {
   );
   // Uniform error envelope: { success:false, error:{code,message} } — no stacks.
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Interactive OpenAPI docs at /api/docs — "Try it out" works end-to-end:
+  // register/login pastes a Bearer token into the Authorize lock.
+  const spec = new DocumentBuilder()
+    .setTitle('AI ATS API')
+    .setDescription(
+      'Multi-tenant applicant tracking system. All responses use the uniform ' +
+      'envelope — errors: {success:false, error:{code,message}}.',
+    )
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  SwaggerModule.setup('api/docs', app, () =>
+    SwaggerModule.createDocument(app, spec),
+  );
 
   await app.listen(process.env.PORT ?? 3001);
 }

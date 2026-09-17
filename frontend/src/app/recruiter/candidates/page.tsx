@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Search, User } from 'lucide-react'
 import { api } from '@/lib/endpoints'
 import { StatusBadge } from '@/components/badges'
+import { Pager } from '@/components/Pager'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,14 +13,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 /** Candidates = people who applied to this company's jobs, grouped per person. */
 export default function Candidates() {
   const [q, setQ] = useState('')
+  const [page, setPage] = useState(1)
   const { data, isLoading } = useQuery({
-    queryKey: ['company-candidates', q],
-    queryFn: () => api.companyApplications(q || undefined),
+    queryKey: ['company-candidates', q, page],
+    queryFn: () => api.companyApplications({ q: q || undefined, page }),
   })
 
   // Group applications by candidate — the page answers "who has applied to us?"
-  const byCandidate = new Map<number, typeof data>()
-  data?.forEach((a) => {
+  const byCandidate = new Map<number, NonNullable<typeof data>['items']>()
+  data?.items.forEach((a) => {
     if (!a.candidate) return
     const list = byCandidate.get(a.candidate.id) ?? []
     list.push(a)
@@ -32,7 +34,7 @@ export default function Candidates() {
         <h1 className="text-2xl font-bold">Candidates</h1>
         <div className="relative w-72">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by name…" className="pl-9" onChange={(e) => setQ(e.target.value)} />
+          <Input placeholder="Search by name…" className="pl-9" onChange={(e) => { setQ(e.target.value); setPage(1) }} />
         </div>
       </div>
       <div className="mt-6 space-y-3">
@@ -60,10 +62,11 @@ export default function Candidates() {
             </Card>
           )
         })}
-        {data?.length === 0 && (
+        {data?.items.length === 0 && (
           <p className="py-10 text-center text-muted-foreground">No candidates match.</p>
         )}
       </div>
+      {data && <Pager page={page} totalPages={data.totalPages} total={data.total} onPage={setPage} />}
     </div>
   )
 }

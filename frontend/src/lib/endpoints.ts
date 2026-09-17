@@ -118,11 +118,15 @@ export const api = {
     request<Interview>('/interviews', { method: 'POST', body: JSON.stringify(data) }),
   myInterviews: () => request<Interview[]>('/interviews/mine'),
   companyInterviews: () => request<Interview[]>('/interviews/company'),
-  companyApplications: (q?: string) =>
-    request<Application[]>(`/applications/company${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  companyApplications: (params?: { q?: string; page?: number; pageSize?: number }) => {
+    const qs = new URLSearchParams(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]),
+    )
+    return request<Paginated<Application>>(`/applications/company${qs.size ? `?${qs}` : ''}`)
+  },
 
   // notifications
-  notifications: () => request<Notification[]>('/notifications/mine'),
+  notifications: (page = 1) => request<Paginated<Notification>>(`/notifications/mine?page=${page}`),
   unreadCount: () => request<{ count: number }>('/notifications/unread-count'),
   markRead: (id: number) => request<void>(`/notifications/${id}/read`, { method: 'PATCH' }),
   markAllRead: () => request<void>('/notifications/read-all', { method: 'PATCH' }),
@@ -135,9 +139,11 @@ export const api = {
   adminAnalytics: () => request<AdminAnalytics>('/admin/analytics'),
   adminJobs: () => request<(Job & { recruiter?: { fullName: string } })[]>('/admin/jobs'),
   adminApplications: () => request<Application[]>('/admin/applications'),
-  adminUsers: (params?: { q?: string; role?: string }) => {
-    const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v) as [string, string][])
-    return request<User[]>(`/admin/users${qs.size ? `?${qs}` : ''}`)
+  adminUsers: (params?: { q?: string; role?: string; page?: number }) => {
+    const qs = new URLSearchParams(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]),
+    )
+    return request<Paginated<User>>(`/admin/users${qs.size ? `?${qs}` : ''}`)
   },
   setUserStatus: (id: number, isActive: boolean) =>
     request<User>(`/admin/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
@@ -146,5 +152,5 @@ export const api = {
   adminReports: () => request<Report[]>('/admin/reports'),
   resolveReport: (id: number, status: 'RESOLVED' | 'DISMISSED') =>
     request<Report>(`/admin/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  adminActivity: () => request<ActivityEntry[]>('/admin/audit-logs'),
+  adminActivity: (page = 1) => request<Paginated<ActivityEntry>>(`/admin/audit-logs?page=${page}`),
 }

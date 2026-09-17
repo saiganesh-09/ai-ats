@@ -96,10 +96,12 @@ export class AdminController {
   }
 
   @Get('users')
-  users(
+  async users(
     @CurrentUser() user: User,
     @Query('q') q?: string,
     @Query('role') role?: Role,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
   ) {
     const { companyId } = this.scope(user);
     const where: Prisma.UserWhereInput = {
@@ -114,16 +116,23 @@ export class AdminController {
           }
         : {}),
     };
-    return this.prisma.user.findMany({
-      where,
-      select: {
-        id: true, email: true, fullName: true, role: true,
-        isActive: true, isSuperadmin: true, companyId: true, createdAt: true,
-        company: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+    const p = Math.max(1, Number(page) || 1);
+    const size = Math.min(100, Math.max(1, Number(pageSize) || 25));
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true, email: true, fullName: true, role: true,
+          isActive: true, isSuperadmin: true, companyId: true, createdAt: true,
+          company: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (p - 1) * size,
+        take: size,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
   }
 
   /** Suspend/activate. Company admins can't touch superadmins or themselves. */
@@ -247,13 +256,25 @@ export class AdminController {
   }
 
   @Get('activity')
-  activityLog(@CurrentUser() user: User) {
+  async activityLog(
+    @CurrentUser() user: User,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
+  ) {
     const { companyId } = this.scope(user);
-    return this.prisma.activityLog.findMany({
-      where: companyId ? { actor: { companyId } } : {},
-      include: { actor: { select: { fullName: true, email: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+    const where = companyId ? { actor: { companyId } } : {};
+    const p = Math.max(1, Number(page) || 1);
+    const size = Math.min(100, Math.max(1, Number(pageSize) || 25));
+    const [items, total] = await Promise.all([
+      this.prisma.activityLog.findMany({
+        where,
+        include: { actor: { select: { fullName: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (p - 1) * size,
+        take: size,
+      }),
+      this.prisma.activityLog.count({ where }),
+    ]);
+    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
   }
 }
