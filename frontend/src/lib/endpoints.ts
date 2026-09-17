@@ -21,6 +21,7 @@ export const api = {
     request<Company>('/companies', { method: 'POST', body: JSON.stringify({ name }) }),
   joinCompany: (inviteCode: string) =>
     request<Company>('/companies/join', { method: 'POST', body: JSON.stringify({ inviteCode }) }),
+  listCompanies: () => request<(Company & { _count: { jobs: number } })[]>('/companies'),
   myCompany: () => request<Company | null>('/companies/mine'),
   setMemberRole: (userId: number, role: string) =>
     request<User>(`/companies/members/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
@@ -116,6 +117,9 @@ export const api = {
   }) =>
     request<Interview>('/interviews', { method: 'POST', body: JSON.stringify(data) }),
   myInterviews: () => request<Interview[]>('/interviews/mine'),
+  companyInterviews: () => request<Interview[]>('/interviews/company'),
+  companyApplications: (q?: string) =>
+    request<Application[]>(`/applications/company${q ? `?q=${encodeURIComponent(q)}` : ''}`),
 
   // notifications
   notifications: () => request<Notification[]>('/notifications/mine'),
@@ -124,11 +128,13 @@ export const api = {
   markAllRead: () => request<void>('/notifications/read-all', { method: 'PATCH' }),
 
   // analytics
-  dashboard: () => request<Dashboard>('/analytics/dashboard'),
+  dashboard: () => request<Dashboard>('/analytics/candidate'),
   candidateDashboard: () => request<CandidateDashboard>('/analytics/candidate-dashboard'),
 
   // admin
   adminAnalytics: () => request<AdminAnalytics>('/admin/analytics'),
+  adminJobs: () => request<(Job & { recruiter?: { fullName: string } })[]>('/admin/jobs'),
+  adminApplications: () => request<Application[]>('/admin/applications'),
   adminUsers: (params?: { q?: string; role?: string }) => {
     const qs = new URLSearchParams(Object.entries(params ?? {}).filter(([, v]) => v) as [string, string][])
     return request<User[]>(`/admin/users${qs.size ? `?${qs}` : ''}`)
@@ -140,5 +146,5 @@ export const api = {
   adminReports: () => request<Report[]>('/admin/reports'),
   resolveReport: (id: number, status: 'RESOLVED' | 'DISMISSED') =>
     request<Report>(`/admin/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  adminActivity: () => request<ActivityEntry[]>('/admin/activity'),
+  adminActivity: () => request<ActivityEntry[]>('/admin/audit-logs'),
 }

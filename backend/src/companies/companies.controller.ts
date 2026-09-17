@@ -12,9 +12,9 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { IsIn, IsString, MinLength } from 'class-validator';
-import { Role, type User } from '@prisma/client';
+import { JobStatus, Role, type User } from '@prisma/client';
 import { ActivityService } from '../activity/activity.service';
-import { CurrentUser, Roles } from '../common/decorators';
+import { CurrentUser, Public, Roles } from '../common/decorators';
 import { PrismaService } from '../prisma/prisma.service';
 
 class CreateCompanyDto {
@@ -79,6 +79,22 @@ export class CompaniesController {
     });
     await this.activity.log(user.id, 'company.joined', 'company', company.id);
     return company;
+  }
+
+  /** Public company directory — name + open-role count only. */
+  @Public()
+  @Get()
+  list() {
+    return this.prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: { jobs: { where: { status: JobStatus.PUBLISHED } } },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
   }
 
   @Get('mine')

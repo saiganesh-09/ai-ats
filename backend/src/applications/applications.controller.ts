@@ -196,6 +196,31 @@ export class ApplicationsController {
 
   // ---------- staff pipeline ----------
 
+  /** All applications across the company (or HM's assigned jobs) — powers
+   *  the /recruiter/candidates + /recruiter/applications index pages. */
+  @Get('company')
+  @Roles(...STAFF)
+  companyApplications(@CurrentUser() user: User, @Query('q') q?: string) {
+    const jobWhere =
+      user.isSuperadmin ? {}
+      : user.role === Role.HIRING_MANAGER
+        ? { hiringManagerId: user.id }
+        : { companyId: user.companyId ?? -1 };
+    return this.prisma.application.findMany({
+      where: {
+        job: jobWhere,
+        ...(q ? { candidate: { fullName: { contains: q, mode: 'insensitive' } } } : {}),
+      },
+      include: {
+        candidate: { select: { id: true, fullName: true, email: true } },
+        job: { select: { id: true, title: true } },
+        assignedRecruiter: { select: { fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
   /** Applicants for one job, with search/filter/sort. Company- or HM-scoped. */
   @Get('job/:jobId')
   @Roles(...STAFF)

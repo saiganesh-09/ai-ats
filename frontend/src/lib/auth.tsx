@@ -90,8 +90,8 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
 
 /** Home route per role — where users land after login. */
 export function homeFor(user: User): string {
-  if (user.isSuperadmin || user.role === 'ADMIN') return '/admin'
-  if (user.role === 'RECRUITER') return '/recruiter'
+  if (user.isSuperadmin || user.role === 'ADMIN') return '/admin/dashboard'
+  if (user.role === 'RECRUITER') return '/recruiter/dashboard'
   if (user.role === 'HIRING_MANAGER') return '/hiring'
-  return '/dashboard'
+  return '/candidate'
 }

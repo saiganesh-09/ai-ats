@@ -14,24 +14,26 @@ import {
 
 const NAV_LINKS: Record<string, { href: string; label: string }[]> = {
   CANDIDATE: [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/dashboard/applications', label: 'Applications' },
-    { href: '/dashboard/resumes', label: 'Resumes' },
-    { href: '/dashboard/profile', label: 'Profile' },
-    { href: '/dashboard/saved', label: 'Saved' },
+    { href: '/candidate', label: 'Dashboard' },
+    { href: '/candidate/applications', label: 'Applications' },
+    { href: '/candidate/resume', label: 'Resumes' },
+    { href: '/candidate/profile', label: 'Profile' },
+    { href: '/candidate/saved-jobs', label: 'Saved' },
   ],
   RECRUITER: [
-    { href: '/recruiter', label: 'Dashboard' },
+    { href: '/recruiter/dashboard', label: 'Dashboard' },
     { href: '/recruiter/jobs', label: 'Jobs' },
+    { href: '/recruiter/candidates', label: 'Candidates' },
+    { href: '/recruiter/interviews', label: 'Interviews' },
     { href: '/recruiter/company', label: 'Company' },
   ],
   HIRING_MANAGER: [{ href: '/hiring', label: 'My Jobs' }],
   ADMIN: [
-    { href: '/admin', label: 'Dashboard' },
+    { href: '/admin/dashboard', label: 'Dashboard' },
     { href: '/admin/users', label: 'Users' },
     { href: '/admin/companies', label: 'Companies' },
     { href: '/admin/reports', label: 'Reports' },
-    { href: '/admin/activity', label: 'Activity' },
+    { href: '/admin/audit-logs', label: 'Activity' },
   ],
 }
 

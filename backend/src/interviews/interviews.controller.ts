@@ -133,6 +133,30 @@ export class InterviewsController {
     return interview;
   }
 
+  /** Staff view: all interviews across the company (HM: assigned jobs). */
+  @Get('company')
+  @Roles(...STAFF)
+  company(@CurrentUser() user: User) {
+    const jobWhere =
+      user.isSuperadmin ? {}
+      : user.role === Role.HIRING_MANAGER
+        ? { hiringManagerId: user.id }
+        : { companyId: user.companyId ?? -1 };
+    return this.prisma.interview.findMany({
+      where: { application: { job: jobWhere } },
+      include: {
+        interviewer: { select: { fullName: true } },
+        application: {
+          include: {
+            candidate: { select: { fullName: true } },
+            job: { select: { title: true } },
+          },
+        },
+      },
+      orderBy: { scheduledAt: 'asc' },
+    });
+  }
+
   /** Candidate's own interview schedule. */
   @Get('mine')
   @Roles(Role.CANDIDATE)

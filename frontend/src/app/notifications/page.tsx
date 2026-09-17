@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
-/** Shared notification center — all roles (was candidate-only under /dashboard). */
+/** Shared notification center — all roles (was candidate-only under /candidate). */
 export default function Notifications() {
   const { user, loading } = useAuth()
   const router = useRouter()

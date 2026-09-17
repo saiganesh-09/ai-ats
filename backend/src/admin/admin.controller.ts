@@ -165,6 +165,37 @@ export class AdminController {
     });
   }
 
+  /** All jobs in scope — the admin job-management table. */
+  @Get('jobs')
+  jobs(@CurrentUser() user: User) {
+    const { companyId } = this.scope(user);
+    return this.prisma.job.findMany({
+      where: companyId ? { companyId } : {},
+      include: {
+        company: { select: { name: true } },
+        recruiter: { select: { fullName: true } },
+        _count: { select: { applications: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  /** All applications in scope — the admin application-management table. */
+  @Get('applications')
+  applications(@CurrentUser() user: User) {
+    const { companyId } = this.scope(user);
+    return this.prisma.application.findMany({
+      where: companyId ? { job: { companyId } } : {},
+      include: {
+        candidate: { select: { fullName: true, email: true } },
+        job: { select: { title: true, company: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
   /** Remove an inappropriate job post (reports workflow). */
   @Delete('jobs/:id')
   async deleteJob(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {

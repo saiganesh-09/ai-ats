@@ -2,43 +2,16 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { BrainCircuit, Plus, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/endpoints'
 import type { Job } from '@/lib/types'
 import { JobStatusBadge } from '@/components/badges'
+import { JobForm, toJobPayload, type JobFormData } from '@/components/JobForm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
-
-const schema = z.object({
-  title: z.string().min(2, 'Title required'),
-  location: z.string().optional(),
-  description: z.string().min(20, 'Min 20 characters'),
-  requirements: z.string().optional(),
-  employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP']),
-  experienceLevel: z.enum(['ENTRY', 'MID', 'SENIOR', 'LEAD']),
-  workMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']),
-  salaryMin: z.string().optional(),
-  salaryMax: z.string().optional(),
-  educationRequirement: z.string().optional(),
-  applicationDeadline: z.string().optional(),
-  openings: z.string().optional(),
-  requiredSkills: z.string().optional(),
-  preferredSkills: z.string().optional(),
-  hiringManagerId: z.string().optional(),
-})
-type Form = z.infer<typeof schema>
-
-const csv = (s?: string) => s?.split(',').map((x) => x.trim()).filter(Boolean)
 
 export default function ManageJobs() {
   const qc = useQueryClient()
@@ -47,26 +20,11 @@ export default function ManageJobs() {
   const { data: company } = useQuery({ queryKey: ['company'], queryFn: api.myCompany })
   const hiringManagers = company?.users?.filter((u) => u.role === 'HIRING_MANAGER') ?? []
 
-  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<Form>({
-    resolver: zodResolver(schema),
-  })
-
   const create = useMutation({
-    mutationFn: (data: Form) =>
-      api.createJob({
-        ...data,
-        salaryMin: data.salaryMin ? Number(data.salaryMin) : undefined,
-        salaryMax: data.salaryMax ? Number(data.salaryMax) : undefined,
-        openings: data.openings ? Number(data.openings) : undefined,
-        applicationDeadline: data.applicationDeadline || undefined,
-        requiredSkills: csv(data.requiredSkills),
-        preferredSkills: csv(data.preferredSkills),
-        hiringManagerId: data.hiringManagerId ? Number(data.hiringManagerId) : undefined,
-      }),
+    mutationFn: (data: JobFormData) => api.createJob(toJobPayload(data)),
     onSuccess: () => {
       toast.success('Job created as draft — publish it when ready')
       setOpen(false)
-      reset()
       qc.invalidateQueries({ queryKey: ['manageJobs'] })
     },
     onError: (e) => toast.error(e.message),
@@ -106,121 +64,22 @@ export default function ManageJobs() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Job postings</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex gap-2">
+          <Link href="/recruiter/jobs/create">
+            <Button variant="outline"><Plus className="mr-2 h-4 w-4" />Full form</Button>
+          </Link>
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button><Plus className="mr-2 h-4 w-4" />Post a job</Button>} />
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>New job posting</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit((d) => create.mutate(d))} className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Title</Label>
-                <Input {...register('title')} />
-                {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1.5">
-                  <Label>Type</Label>
-                  <Select defaultValue="FULL_TIME" onValueChange={(v) => v && setValue('employmentType', v as Form['employmentType'])}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FULL_TIME">Full-time</SelectItem>
-                      <SelectItem value="PART_TIME">Part-time</SelectItem>
-                      <SelectItem value="CONTRACT">Contract</SelectItem>
-                      <SelectItem value="INTERNSHIP">Internship</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Level</Label>
-                  <Select defaultValue="MID" onValueChange={(v) => v && setValue('experienceLevel', v as Form['experienceLevel'])}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ENTRY">Entry</SelectItem>
-                      <SelectItem value="MID">Mid</SelectItem>
-                      <SelectItem value="SENIOR">Senior</SelectItem>
-                      <SelectItem value="LEAD">Lead</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Work mode</Label>
-                  <Select defaultValue="ONSITE" onValueChange={(v) => v && setValue('workMode', v as Form['workMode'])}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="REMOTE">Remote</SelectItem>
-                      <SelectItem value="HYBRID">Hybrid</SelectItem>
-                      <SelectItem value="ONSITE">On-site</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label>Location</Label>
-                  <Input {...register('location')} placeholder="City / Remote" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Openings</Label>
-                  <Input type="number" min={1} defaultValue="1" {...register('openings')} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label>Salary min (annual)</Label>
-                  <Input type="number" min={0} placeholder="120000" {...register('salaryMin')} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Salary max</Label>
-                  <Input type="number" min={0} placeholder="160000" {...register('salaryMax')} />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Textarea rows={4} {...register('description')} />
-                {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Requirements</Label>
-                <Textarea rows={2} {...register('requirements')} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label>Required skills</Label>
-                  <Input placeholder="typescript, node, sql" {...register('requiredSkills')} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Preferred (nice-to-have)</Label>
-                  <Input placeholder="aws, docker" {...register('preferredSkills')} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label>Education requirement</Label>
-                  <Input placeholder="BS in CS or equivalent" {...register('educationRequirement')} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Application deadline</Label>
-                  <Input type="date" {...register('applicationDeadline')} />
-                </div>
-              </div>
-              {hiringManagers.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label>Hiring manager</Label>
-                  <Select onValueChange={(v) => v != null && setValue('hiringManagerId', String(v))}>
-                    <SelectTrigger><SelectValue placeholder="Assign later" /></SelectTrigger>
-                    <SelectContent>
-                      {hiringManagers.map((hm) => (
-                        <SelectItem key={hm.id} value={String(hm.id)}>{hm.fullName}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <Button className="w-full" disabled={create.isPending}>
-                {create.isPending ? 'Creating…' : 'Create draft'}
-              </Button>
-            </form>
+            <JobForm
+              hiringManagers={hiringManagers}
+              pending={create.isPending}
+              onSubmit={(d) => create.mutate(d)}
+            />
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="mt-6 space-y-3">

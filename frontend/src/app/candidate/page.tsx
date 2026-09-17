@@ -18,9 +18,9 @@ export default function Dashboard() {
   const upcoming = interviews?.filter((i) => new Date(i.scheduledAt) >= new Date()) ?? []
 
   const stats = [
-    { label: 'Applications', value: apps?.length ?? 0, icon: Send, href: '/dashboard/applications' },
-    { label: 'Resumes', value: resumes?.length ?? 0, icon: FileText, href: '/dashboard/resumes' },
-    { label: 'Saved jobs', value: dash?.savedJobs ?? 0, icon: Bookmark, href: '/dashboard/saved' },
+    { label: 'Applications', value: apps?.length ?? 0, icon: Send, href: '/candidate/applications' },
+    { label: 'Resumes', value: resumes?.length ?? 0, icon: FileText, href: '/candidate/resume' },
+    { label: 'Saved jobs', value: dash?.savedJobs ?? 0, icon: Bookmark, href: '/candidate/saved-jobs' },
     { label: 'Unread alerts', value: dash?.unreadNotifications ?? 0, icon: Bell, href: '/notifications' },
   ]
 
@@ -58,7 +58,7 @@ export default function Dashboard() {
             {!!dash?.missingCheckpoints && (
               <p className="mt-2 text-xs text-muted-foreground">
                 {dash.missingCheckpoints} item{dash.missingCheckpoints === 1 ? '' : 's'} to go —{' '}
-                <Link href="/dashboard/profile" className="text-primary">complete your profile</Link>
+                <Link href="/candidate/profile" className="text-primary">complete your profile</Link>
               </p>
             )}
           </CardContent>
@@ -68,7 +68,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">Upcoming interviews</CardTitle>
-            <Link href="/dashboard/interviews" className="flex items-center gap-1 text-sm text-primary">
+            <Link href="/candidate/interviews" className="flex items-center gap-1 text-sm text-primary">
               All <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
@@ -143,7 +143,7 @@ export default function Dashboard() {
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Recent applications</CardTitle>
-          <Link href="/dashboard/applications" className="flex items-center gap-1 text-sm text-primary">
+          <Link href="/candidate/applications" className="flex items-center gap-1 text-sm text-primary">
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </CardHeader>
