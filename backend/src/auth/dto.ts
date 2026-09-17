@@ -1,10 +1,4 @@
-import {
-  IsEmail,
-  IsIn,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsIn, IsString, MaxLength, MinLength } from 'class-validator';
 import type { Role } from '@prisma/client';
 
 const PUBLIC_ROLES = ['CANDIDATE', 'RECRUITER', 'HIRING_MANAGER'] as const;

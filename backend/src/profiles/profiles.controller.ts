@@ -24,7 +24,12 @@ class ProfileDto {
   skills?: string[];
 
   @IsOptional()
-  experience?: Array<{ title: string; company: string; years?: number; description?: string }>;
+  experience?: Array<{
+    title: string;
+    company: string;
+    years?: number;
+    description?: string;
+  }>;
 
   @IsOptional()
   education?: Array<{ degree: string; institution: string; year?: number }>;
@@ -57,21 +62,37 @@ export class ProfilesController {
           where: { userId },
           include: { skill: true },
         }),
-        this.prisma.experience.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
-        this.prisma.education.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
-        this.prisma.certification.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+        this.prisma.experience.findMany({
+          where: { userId },
+          orderBy: { id: 'asc' },
+        }),
+        this.prisma.education.findMany({
+          where: { userId },
+          orderBy: { id: 'asc' },
+        }),
+        this.prisma.certification.findMany({
+          where: { userId },
+          orderBy: { id: 'asc' },
+        }),
       ]);
     return {
       headline: profile.headline,
       skills: skills.map((cs) => cs.skill.name),
       experience: experiences.map(({ title, company, years, description }) => ({
-        title, company, years, description,
+        title,
+        company,
+        years,
+        description,
       })),
       education: educations.map(({ degree, institution, year }) => ({
-        degree, institution, year,
+        degree,
+        institution,
+        year,
       })),
       certifications: certifications.map(({ name, issuer, year }) => ({
-        name, issuer, year,
+        name,
+        issuer,
+        year,
       })),
     };
   }
@@ -131,7 +152,8 @@ export class ProfilesController {
           job: { companyId: user.companyId ?? -1 },
         },
       });
-      if (!applied) throw new ForbiddenException('Candidate has not applied to your jobs');
+      if (!applied)
+        throw new ForbiddenException('Candidate has not applied to your jobs');
     }
     return this.compose(userId);
   }

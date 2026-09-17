@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CalendarDays, Link2, MapPin, Phone, User, Video } from 'lucide-react'
 import { api } from '@/lib/endpoints'
@@ -10,7 +11,7 @@ const TYPE_ICON = { ONLINE: Video, PHONE: Phone, ONSITE: MapPin } as const
 
 export default function Interviews() {
   const { data, isLoading } = useQuery({ queryKey: ['interviews'], queryFn: api.myInterviews })
-  const now = Date.now()
+  const [now] = useState(() => Date.now())
   const upcoming = data?.filter((iv) => new Date(iv.scheduledAt).getTime() >= now - 3600e3) ?? []
   const past = data?.filter((iv) => new Date(iv.scheduledAt).getTime() < now - 3600e3) ?? []
 

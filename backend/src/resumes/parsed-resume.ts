@@ -19,7 +19,12 @@ export interface ParsedResumeData {
 }
 
 const stripHtml = (s: string) =>
-  s.replace(/<[^>]*>/g, '').replace(/[\x00-\x1f]/g, '').trim();
+  s
+    .replace(/<[^>]*>/g, '')
+    // Stripping control chars IS the point of this regex.
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f]/g, '')
+    .trim();
 
 const cleanStr = (v: unknown, max: number): string | undefined => {
   if (typeof v !== 'string') return undefined;
@@ -48,10 +53,16 @@ const ALLOWED_KEYS: Record<string, string[]> = {
   projects: ['name', 'description', 'technologies', 'url'],
 };
 
-function cleanRecords(v: unknown, kind: keyof typeof ALLOWED_KEYS): Record<string, unknown>[] {
+function cleanRecords(
+  v: unknown,
+  kind: keyof typeof ALLOWED_KEYS,
+): Record<string, unknown>[] {
   if (!Array.isArray(v)) return [];
   return v
-    .filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null && !Array.isArray(r))
+    .filter(
+      (r): r is Record<string, unknown> =>
+        typeof r === 'object' && r !== null && !Array.isArray(r),
+    )
     .slice(0, 15)
     .map((r) => {
       const out: Record<string, unknown> = {};
@@ -71,7 +82,10 @@ function cleanRecords(v: unknown, kind: keyof typeof ALLOWED_KEYS): Record<strin
 
 /** Sanitize raw AI output → safe ParsedResumeData. Anything unusable is dropped. */
 export function sanitizeParsed(raw: unknown): ParsedResumeData {
-  const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<
+    string,
+    unknown
+  >;
   const email = cleanStr(r.email, 100);
   const phone = cleanStr(r.phone, 20);
   return {

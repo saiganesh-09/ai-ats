@@ -39,7 +39,10 @@ class SmtpMailProvider implements MailProvider {
 
   async send(to: string, email: RenderedEmail) {
     await this.transporter.sendMail({
-      from: this.from, to, subject: email.subject, html: email.html,
+      from: this.from,
+      to,
+      subject: email.subject,
+      html: email.html,
     });
   }
 }
@@ -57,9 +60,11 @@ export class EmailService {
     : new ConsoleMailProvider();
 
   private dispatch(to: string, email: RenderedEmail) {
-    this.provider.send(to, email).catch((e) =>
-      this.logger.warn(`Email to ${to} failed (${email.subject}): ${e}`),
-    );
+    this.provider
+      .send(to, email)
+      .catch((e) =>
+        this.logger.warn(`Email to ${to} failed (${email.subject}): ${e}`),
+      );
   }
 
   welcome(to: string, name: string) {
@@ -71,11 +76,31 @@ export class EmailService {
   statusUpdate(to: string, name: string, jobTitle: string, status: string) {
     this.dispatch(to, templates.statusUpdate(name, jobTitle, status));
   }
-  interviewInvitation(to: string, name: string, jobTitle: string, type: string, when: Date, link?: string) {
-    this.dispatch(to, templates.interviewInvitation(name, jobTitle, type, when, link));
+  interviewInvitation(
+    to: string,
+    name: string,
+    jobTitle: string,
+    type: string,
+    when: Date,
+    link?: string,
+  ) {
+    this.dispatch(
+      to,
+      templates.interviewInvitation(name, jobTitle, type, when, link),
+    );
   }
-  interviewReminder(to: string, name: string, jobTitle: string, type: string, when: Date, link?: string) {
-    this.dispatch(to, templates.interviewReminder(name, jobTitle, type, when, link));
+  interviewReminder(
+    to: string,
+    name: string,
+    jobTitle: string,
+    type: string,
+    when: Date,
+    link?: string,
+  ) {
+    this.dispatch(
+      to,
+      templates.interviewReminder(name, jobTitle, type, when, link),
+    );
   }
   offerNotification(to: string, name: string, jobTitle: string) {
     this.dispatch(to, templates.offerNotification(name, jobTitle));

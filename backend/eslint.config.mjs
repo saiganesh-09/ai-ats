@@ -29,7 +29,25 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      // Interface-shaped asyncs (providers/services) legitimately have no await.
+      '@typescript-eslint/require-await': 'off',
+      // Method refs passed to queryFn/callbacks are bound or self-contained.
+      '@typescript-eslint/unbound-method': 'off',
+      // `const { passwordHash: _, ...rest } = user` — underscore = intentionally unused.
+      '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+    },
+  },
+  {
+    // Tests mock Prisma/services — `any`-heavy by nature; unsafe-* rules
+    // would force hundreds of casts with zero safety gained.
+    files: ['**/*.spec.ts', 'test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
 );

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import type { Request } from 'express';
 import type { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { IS_PUBLIC_KEY, ROLES_KEY } from './decorators';
@@ -31,7 +32,7 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx.switchToHttp().getRequest<Request & { user?: User }>();
     const header: string | undefined = request.headers.authorization;
     if (!header?.startsWith('Bearer ')) {
       throw new UnauthorizedException('Missing access token');
@@ -65,7 +66,7 @@ export class RolesGuard implements CanActivate {
     ]);
     if (!required?.length) return true;
 
-    const user: User = ctx.switchToHttp().getRequest().user;
+    const user = ctx.switchToHttp().getRequest<{ user: User }>().user;
     if (user.isSuperadmin) return true;
     if (!required.includes(user.role)) {
       throw new ForbiddenException('Insufficient permissions');

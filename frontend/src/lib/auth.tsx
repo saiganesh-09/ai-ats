@@ -20,14 +20,15 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  // No-token users start unblocked — the initializer reads localStorage
+  // once instead of a synchronous setState inside the bootstrap effect.
+  const [loading, setLoading] = useState(
+    () => typeof window === 'undefined' || !!getToken(),
+  )
   const router = useRouter()
 
   useEffect(() => {
-    if (!getToken()) {
-      setLoading(false)
-      return
-    }
+    if (!getToken()) return // no session — loading was already false at init
     api.me()
       .then(setUser)
       .catch(() => setToken(null))

@@ -17,7 +17,6 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
-  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -57,7 +56,12 @@ class JobDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) salaryMax?: number;
   @IsOptional() @IsString() educationRequirement?: string;
   @IsOptional() @IsDateString() applicationDeadline?: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) openings?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  openings?: number;
 
   @IsOptional() @IsArray() @IsString({ each: true }) requiredSkills?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) preferredSkills?: string[];
@@ -77,7 +81,12 @@ class JobUpdateDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) salaryMax?: number;
   @IsOptional() @IsString() educationRequirement?: string;
   @IsOptional() @IsDateString() applicationDeadline?: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) openings?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  openings?: number;
   @IsOptional() @IsArray() @IsString({ each: true }) requiredSkills?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) preferredSkills?: string[];
   @IsOptional() @IsInt() hiringManagerId?: number;
@@ -130,19 +139,26 @@ export class JobsController {
     const where: Prisma.JobWhereInput = {
       status: JobStatus.PUBLISHED,
       // Only show postings still accepting applications.
-      OR: [{ applicationDeadline: null }, { applicationDeadline: { gte: new Date() } }],
+      OR: [
+        { applicationDeadline: null },
+        { applicationDeadline: { gte: new Date() } },
+      ],
       ...(q
         ? {
-            AND: [{
-              OR: [
-                { title: { contains: q, mode: 'insensitive' } },
-                { description: { contains: q, mode: 'insensitive' } },
-                { company: { name: { contains: q, mode: 'insensitive' } } },
-              ],
-            }],
+            AND: [
+              {
+                OR: [
+                  { title: { contains: q, mode: 'insensitive' } },
+                  { description: { contains: q, mode: 'insensitive' } },
+                  { company: { name: { contains: q, mode: 'insensitive' } } },
+                ],
+              },
+            ],
           }
         : {}),
-      ...(location ? { location: { contains: location, mode: 'insensitive' } } : {}),
+      ...(location
+        ? { location: { contains: location, mode: 'insensitive' } }
+        : {}),
       ...(experienceLevel ? { experienceLevel } : {}),
       ...(employmentType ? { employmentType } : {}),
       ...(workMode ? { workMode } : {}),
@@ -150,7 +166,11 @@ export class JobsController {
       ...(Number(salaryMin) ? { salaryMax: { gte: Number(salaryMin) } } : {}),
       ...(Number(salaryMax) ? { salaryMin: { lte: Number(salaryMax) } } : {}),
       ...(Number(postedWithin)
-        ? { createdAt: { gte: new Date(Date.now() - Number(postedWithin) * 864e5) } }
+        ? {
+            createdAt: {
+              gte: new Date(Date.now() - Number(postedWithin) * 864e5),
+            },
+          }
         : {}),
       ...(skillNames?.length
         ? { skills: { some: { skill: { name: { in: skillNames } } } } }
@@ -158,16 +178,22 @@ export class JobsController {
     };
 
     const orderBy: Prisma.JobOrderByWithRelationInput[] =
-      sort === 'oldest' ? [{ createdAt: 'asc' }]
-      : sort === 'title' ? [{ title: 'asc' }]
-      : sort === 'salary' ? [{ salaryMax: { sort: 'desc', nulls: 'last' } }]
-      : [{ createdAt: 'desc' }];
+      sort === 'oldest'
+        ? [{ createdAt: 'asc' }]
+        : sort === 'title'
+          ? [{ title: 'asc' }]
+          : sort === 'salary'
+            ? [{ salaryMax: { sort: 'desc', nulls: 'last' } }]
+            : [{ createdAt: 'desc' }];
 
     const pageNum = Math.max(1, Number(page) || 1);
     const take = Math.min(50, Math.max(1, Number(pageSize) || 10));
     const [items, total] = await Promise.all([
       this.prisma.job.findMany({
-        where, orderBy, take, skip: (pageNum - 1) * take,
+        where,
+        orderBy,
+        take,
+        skip: (pageNum - 1) * take,
         include: {
           company: { select: { name: true } },
           skills: { include: { skill: { select: { name: true } } } },
@@ -232,8 +258,13 @@ export class JobsController {
     if (dto.salaryMin && dto.salaryMax && dto.salaryMin > dto.salaryMax) {
       throw new BadRequestException('salaryMin cannot exceed salaryMax');
     }
-    if (dto.applicationDeadline && new Date(dto.applicationDeadline) < new Date()) {
-      throw new BadRequestException('Application deadline must be in the future');
+    if (
+      dto.applicationDeadline &&
+      new Date(dto.applicationDeadline) < new Date()
+    ) {
+      throw new BadRequestException(
+        'Application deadline must be in the future',
+      );
     }
     await this.assertHiringManager(dto.hiringManagerId, user.companyId);
     const { requiredSkills, preferredSkills, ...data } = dto;
@@ -258,22 +289,37 @@ export class JobsController {
     }
     await this.assertHiringManager(dto.hiringManagerId, job.companyId);
     const { requiredSkills, preferredSkills, ...data } = dto;
-    const updated = await this.prisma.job.update({ where: { id: job.id }, data });
+    const updated = await this.prisma.job.update({
+      where: { id: job.id },
+      data,
+    });
     // Re-sync skills when text OR explicit skill lists changed.
-    if (requiredSkills || preferredSkills ||
-        dto.description !== undefined || dto.requirements !== undefined) {
-      await this.syncSkills(updated.id, requiredSkills, preferredSkills, updated);
+    if (
+      requiredSkills ||
+      preferredSkills ||
+      dto.description !== undefined ||
+      dto.requirements !== undefined
+    ) {
+      await this.syncSkills(
+        updated.id,
+        requiredSkills,
+        preferredSkills,
+        updated,
+      );
     }
-    await this.activity.log(
-      user.id, 'job.updated', 'job', id, { fields: Object.keys(dto) },
-    );
+    await this.activity.log(user.id, 'job.updated', 'job', id, {
+      fields: Object.keys(dto),
+    });
     return updated;
   }
 
   /** DRAFT → PUBLISHED, and PAUSED → PUBLISHED (resume). */
   @Post(':id/publish')
   @Roles(Role.RECRUITER, Role.ADMIN)
-  async publish(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async publish(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const job = await this.companyJob(id, user);
     if (job.status === JobStatus.CLOSED) {
       throw new BadRequestException('Closed jobs cannot be republished');
@@ -288,7 +334,10 @@ export class JobsController {
   /** PUBLISHED → PAUSED (hidden from the board, applications preserved). */
   @Post(':id/pause')
   @Roles(Role.RECRUITER, Role.ADMIN)
-  async pause(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async pause(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const job = await this.companyJob(id, user);
     if (job.status !== JobStatus.PUBLISHED) {
       throw new BadRequestException('Only published jobs can be paused');
@@ -302,7 +351,10 @@ export class JobsController {
 
   @Post(':id/close')
   @Roles(Role.RECRUITER, Role.ADMIN)
-  async close(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async close(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const job = await this.companyJob(id, user);
     await this.activity.log(user.id, 'job.closed', 'job', id);
     return this.prisma.job.update({
@@ -318,9 +370,14 @@ export class JobsController {
    */
   @Delete(':id')
   @Roles(Role.RECRUITER, Role.ADMIN)
-  async remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async remove(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const job = await this.companyJob(id, user);
-    const apps = await this.prisma.application.count({ where: { jobId: job.id } });
+    const apps = await this.prisma.application.count({
+      where: { jobId: job.id },
+    });
     if (apps > 0) {
       throw new BadRequestException(
         `Cannot delete a job with ${apps} application(s) — close it instead`,
@@ -333,7 +390,10 @@ export class JobsController {
 
   @Post(':id/analyze')
   @Roles(Role.RECRUITER, Role.ADMIN)
-  async analyze(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async analyze(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const job = await this.companyJob(id, user);
     return this.ai.analyzeJobDescription(job.title, job.description);
   }
@@ -354,7 +414,10 @@ export class JobsController {
   @Delete(':id/save')
   @Roles(Role.CANDIDATE)
   @HttpCode(204)
-  async unsave(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async unsave(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     await this.prisma.savedJob.deleteMany({
       where: { userId: user.id, jobId: id },
     });
@@ -394,15 +457,18 @@ export class JobsController {
     preferred: string[] | undefined,
     job: { description: string; requirements: string | null },
   ) {
-    const req = required ?? this.skills.extractFromText(
-      `${job.description} ${job.requirements ?? ''}`,
-    );
+    const req =
+      required ??
+      this.skills.extractFromText(
+        `${job.description} ${job.requirements ?? ''}`,
+      );
     await this.skills.syncJobSkills(jobId, req, preferred ?? []);
   }
 
   private async openJob(id: number) {
     const job = await this.prisma.job.findUnique({ where: { id } });
-    const pastDeadline = job?.applicationDeadline && job.applicationDeadline < new Date();
+    const pastDeadline =
+      job?.applicationDeadline && job.applicationDeadline < new Date();
     if (!job || job.status !== JobStatus.PUBLISHED || pastDeadline) {
       throw new NotFoundException('Job not available');
     }
@@ -414,12 +480,15 @@ export class JobsController {
     const job = await this.prisma.job.findUnique({ where: { id } });
     if (!job) throw new NotFoundException('Job not found');
     if (!user.isSuperadmin && job.companyId !== user.companyId) {
-      throw new ForbiddenException('Not your company\'s job');
+      throw new ForbiddenException("Not your company's job");
     }
     return job;
   }
 
-  private async assertHiringManager(hmId: number | undefined, companyId: number) {
+  private async assertHiringManager(
+    hmId: number | undefined,
+    companyId: number,
+  ) {
     if (hmId === undefined) return;
     const hm = await this.prisma.user.findUnique({ where: { id: hmId } });
     if (!hm || hm.companyId !== companyId || hm.role !== Role.HIRING_MANAGER) {

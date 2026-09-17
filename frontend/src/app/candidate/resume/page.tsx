@@ -54,7 +54,8 @@ export default function Resumes() {
         <input
           ref={fileInput} type="file" accept=".pdf,.docx,.txt" hidden
           onChange={(e) => {
-            e.target.files?.[0] && upload(e.target.files[0])
+            const file = e.target.files?.[0]
+            if (file) upload(file)
             e.target.value = ''
           }}
         />

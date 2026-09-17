@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Bell, Bookmark, Calendar, FileText, Send, Sparkles } from 'lucide-react'
+import { ArrowRight, Bell, Bookmark, FileText, Send, Sparkles } from 'lucide-react'
 import { api } from '@/lib/endpoints'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/badges'

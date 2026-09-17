@@ -17,63 +17,98 @@ const wrap = (title: string, body: string) => `
   </p>
 </div>`;
 
-const fmt = (d: Date | string) => new Date(d).toLocaleString('en-US', {
-  weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-});
+const fmt = (d: Date | string) =>
+  new Date(d).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
 export const templates = {
   welcome: (name: string): RenderedEmail => ({
     subject: 'Welcome to AI ATS',
-    html: wrap('Welcome aboard', `
+    html: wrap(
+      'Welcome aboard',
+      `
       <p>Hi ${name},</p>
       <p>Your account is ready. Complete your profile and upload a resume —
-         our AI will extract your skills automatically.</p>`),
+         our AI will extract your skills automatically.</p>`,
+    ),
   }),
 
   applicationConfirmation: (name: string, jobTitle: string): RenderedEmail => ({
     subject: `Application received: ${jobTitle}`,
-    html: wrap('Application received', `
+    html: wrap(
+      'Application received',
+      `
       <p>Hi ${name},</p>
       <p>We've received your application for <strong>${jobTitle}</strong>.
-         You'll be notified as it moves through the pipeline.</p>`),
+         You'll be notified as it moves through the pipeline.</p>`,
+    ),
   }),
 
-  statusUpdate: (name: string, jobTitle: string, status: string): RenderedEmail => ({
+  statusUpdate: (
+    name: string,
+    jobTitle: string,
+    status: string,
+  ): RenderedEmail => ({
     subject: `Application update: ${jobTitle} → ${status}`,
-    html: wrap('Application status update', `
+    html: wrap(
+      'Application status update',
+      `
       <p>Hi ${name},</p>
       <p>Your application for <strong>${jobTitle}</strong> moved to
-         <strong>${status}</strong>.</p>`),
+         <strong>${status}</strong>.</p>`,
+    ),
   }),
 
   interviewInvitation: (
-    name: string, jobTitle: string, type: string, when: Date, link?: string,
+    name: string,
+    jobTitle: string,
+    type: string,
+    when: Date,
+    link?: string,
   ): RenderedEmail => ({
     subject: `Interview invitation: ${jobTitle}`,
-    html: wrap('Interview invitation', `
+    html: wrap(
+      'Interview invitation',
+      `
       <p>Hi ${name},</p>
       <p>You're invited to a <strong>${type.toLowerCase()}</strong> interview for
          <strong>${jobTitle}</strong> on <strong>${fmt(when)}</strong>.</p>
-      ${link ? `<p><a href="${link}">Join the meeting →</a></p>` : ''}`),
+      ${link ? `<p><a href="${link}">Join the meeting →</a></p>` : ''}`,
+    ),
   }),
 
   interviewReminder: (
-    name: string, jobTitle: string, type: string, when: Date, link?: string,
+    name: string,
+    jobTitle: string,
+    type: string,
+    when: Date,
+    link?: string,
   ): RenderedEmail => ({
     subject: `Reminder: interview tomorrow — ${jobTitle}`,
-    html: wrap('Interview reminder', `
+    html: wrap(
+      'Interview reminder',
+      `
       <p>Hi ${name},</p>
       <p>Reminder: your <strong>${type.toLowerCase()}</strong> interview for
          <strong>${jobTitle}</strong> is at <strong>${fmt(when)}</strong>.</p>
-      ${link ? `<p><a href="${link}">Join the meeting →</a></p>` : ''}`),
+      ${link ? `<p><a href="${link}">Join the meeting →</a></p>` : ''}`,
+    ),
   }),
 
   offerNotification: (name: string, jobTitle: string): RenderedEmail => ({
     subject: `🎉 Offer extended: ${jobTitle}`,
-    html: wrap('Congratulations!', `
+    html: wrap(
+      'Congratulations!',
+      `
       <p>Hi ${name},</p>
       <p>Great news — an offer has been extended for
-         <strong>${jobTitle}</strong>. Check your dashboard for details.</p>`),
+         <strong>${jobTitle}</strong>. Check your dashboard for details.</p>`,
+    ),
   }),
 };
 

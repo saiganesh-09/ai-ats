@@ -17,7 +17,10 @@ describe('sanitizeParsed — never trust AI output', () => {
   });
 
   it('drops invalid email/phone', () => {
-    const out = sanitizeParsed({ email: 'not-an-email', phone: 'call me maybe' });
+    const out = sanitizeParsed({
+      email: 'not-an-email',
+      phone: 'call me maybe',
+    });
     expect(out.email).toBeUndefined();
     expect(out.phone).toBeUndefined();
   });

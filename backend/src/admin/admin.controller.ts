@@ -10,7 +10,7 @@ import {
   Patch,
   Query,
 } from '@nestjs/common';
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsIn } from 'class-validator';
 import {
   ApplicationStatus,
   JobStatus,
@@ -57,9 +57,16 @@ export class AdminController {
     const appWhere = companyId ? { job: { companyId } } : {};
 
     const [
-      totalUsers, totalCandidates, totalRecruiters, totalCompanies,
-      totalJobs, activeJobs, totalApplications, successfulHires,
-      signupsTrend, appsTrend,
+      totalUsers,
+      totalCandidates,
+      totalRecruiters,
+      totalCompanies,
+      totalJobs,
+      activeJobs,
+      totalApplications,
+      successfulHires,
+      signupsTrend,
+      appsTrend,
     ] = await Promise.all([
       this.prisma.user.count({ where: userWhere }),
       this.prisma.user.count({ where: { ...userWhere, role: Role.CANDIDATE } }),
@@ -68,7 +75,9 @@ export class AdminController {
       }),
       this.prisma.company.count({ where: companyId ? { id: companyId } : {} }),
       this.prisma.job.count({ where: jobWhere }),
-      this.prisma.job.count({ where: { ...jobWhere, status: JobStatus.PUBLISHED } }),
+      this.prisma.job.count({
+        where: { ...jobWhere, status: JobStatus.PUBLISHED },
+      }),
       this.prisma.application.count({ where: appWhere }),
       this.prisma.application.count({
         where: { ...appWhere, status: ApplicationStatus.HIRED },
@@ -89,9 +98,16 @@ export class AdminController {
     ]);
 
     return {
-      totalUsers, totalCandidates, totalRecruiters, totalCompanies,
-      totalJobs, activeJobs, totalApplications, successfulHires,
-      signupsTrend, appsTrend,
+      totalUsers,
+      totalCandidates,
+      totalRecruiters,
+      totalCompanies,
+      totalJobs,
+      activeJobs,
+      totalApplications,
+      successfulHires,
+      signupsTrend,
+      appsTrend,
     };
   }
 
@@ -122,8 +138,14 @@ export class AdminController {
       this.prisma.user.findMany({
         where,
         select: {
-          id: true, email: true, fullName: true, role: true,
-          isActive: true, isSuperadmin: true, companyId: true, createdAt: true,
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          isActive: true,
+          isSuperadmin: true,
+          companyId: true,
+          createdAt: true,
           company: { select: { name: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -132,7 +154,13 @@ export class AdminController {
       }),
       this.prisma.user.count({ where }),
     ]);
-    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+    return {
+      items,
+      total,
+      page: p,
+      pageSize: size,
+      totalPages: Math.max(1, Math.ceil(total / size)),
+    };
   }
 
   /** Suspend/activate. Company admins can't touch superadmins or themselves. */
@@ -145,7 +173,11 @@ export class AdminController {
     const target = await this.prisma.user.findUnique({ where: { id } });
     if (!target) throw new NotFoundException('User not found');
     if (!user.isSuperadmin) {
-      if (target.companyId !== user.companyId || target.isSuperadmin || target.id === user.id) {
+      if (
+        target.companyId !== user.companyId ||
+        target.isSuperadmin ||
+        target.id === user.id
+      ) {
         throw new ForbiddenException('Cannot modify this user');
       }
     }
@@ -157,7 +189,8 @@ export class AdminController {
     await this.activity.log(
       user.id,
       dto.isActive ? 'user.activated' : 'user.suspended',
-      'user', id,
+      'user',
+      id,
     );
     return updated;
   }
@@ -207,11 +240,14 @@ export class AdminController {
 
   /** Remove an inappropriate job post (reports workflow). */
   @Delete('jobs/:id')
-  async deleteJob(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async deleteJob(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const job = await this.prisma.job.findUnique({ where: { id } });
     if (!job) throw new NotFoundException('Job not found');
     if (!user.isSuperadmin && job.companyId !== user.companyId) {
-      throw new ForbiddenException('Not your company\'s job');
+      throw new ForbiddenException("Not your company's job");
     }
     await this.prisma.job.delete({ where: { id } });
     await this.activity.log(user.id, 'job.deleted_by_admin', 'job', id);
@@ -243,15 +279,15 @@ export class AdminController {
     });
     if (!report) throw new NotFoundException('Report not found');
     if (!user.isSuperadmin && report.job.companyId !== user.companyId) {
-      throw new ForbiddenException('Not your company\'s report');
+      throw new ForbiddenException("Not your company's report");
     }
     const updated = await this.prisma.report.update({
       where: { id },
       data: { status: dto.status },
     });
-    await this.activity.log(
-      user.id, 'report.resolved', 'report', id, { status: dto.status },
-    );
+    await this.activity.log(user.id, 'report.resolved', 'report', id, {
+      status: dto.status,
+    });
     return updated;
   }
 
@@ -275,6 +311,12 @@ export class AdminController {
       }),
       this.prisma.activityLog.count({ where }),
     ]);
-    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+    return {
+      items,
+      total,
+      page: p,
+      pageSize: size,
+      totalPages: Math.max(1, Math.ceil(total / size)),
+    };
   }
 }

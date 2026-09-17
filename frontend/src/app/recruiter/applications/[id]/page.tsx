@@ -387,7 +387,7 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
           {app.coverNote && (
             <Card>
               <CardHeader><CardTitle className="text-base">Cover note</CardTitle></CardHeader>
-              <CardContent className="text-sm italic">"{app.coverNote}"</CardContent>
+              <CardContent className="text-sm italic">&quot;{app.coverNote}&quot;</CardContent>
             </Card>
           )}
         </div>

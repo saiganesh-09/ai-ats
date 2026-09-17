@@ -43,7 +43,13 @@ export class NotificationsController {
       }),
       this.prisma.notification.count({ where }),
     ]);
-    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+    return {
+      items,
+      total,
+      page: p,
+      pageSize: size,
+      totalPages: Math.max(1, Math.ceil(total / size)),
+    };
   }
 
   @Get('unread-count')

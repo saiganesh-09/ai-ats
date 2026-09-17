@@ -36,16 +36,23 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     );
   }
 
-  private write(req: Request & { user?: User }, status: number, ms: number, err: unknown) {
-    process.stdout.write(JSON.stringify({
-      type: 'http',
-      method: req.method,
-      path: req.baseUrl + req.path, // path only — no query string (may carry PII)
-      status,
-      ms,
-      userId: req.user?.id ?? null,
-      role: req.user?.role ?? null,
-      ...(err ? { error: (err as Error).constructor.name } : {}),
-    }) + '\n');
+  private write(
+    req: Request & { user?: User },
+    status: number,
+    ms: number,
+    err: unknown,
+  ) {
+    process.stdout.write(
+      JSON.stringify({
+        type: 'http',
+        method: req.method,
+        path: req.baseUrl + req.path, // path only — no query string (may carry PII)
+        status,
+        ms,
+        userId: req.user?.id ?? null,
+        role: req.user?.role ?? null,
+        ...(err ? { error: (err as Error).constructor.name } : {}),
+      }) + '\n',
+    );
   }
 }

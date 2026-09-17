@@ -39,7 +39,7 @@ export default function ManageJobs() {
 
   const analyze = useMutation({
     mutationFn: api.analyzeJob,
-    onSuccess: (data, id) => {
+    onSuccess: (data) => {
       toast.info(
         `JD analysis: ${data.seniority} level, clarity ${data.clarity_score}/100. Skills: ${(data.required_skills as string[])?.join(', ')}`,
         { duration: 8000 },

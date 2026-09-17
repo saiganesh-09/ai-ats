@@ -38,7 +38,12 @@ export class InterviewRemindersService {
     for (const iv of due) {
       const c = iv.application.candidate;
       this.email.interviewReminder(
-        c.email, c.fullName, iv.application.job.title, iv.type, iv.scheduledAt, iv.link ?? undefined,
+        c.email,
+        c.fullName,
+        iv.application.job.title,
+        iv.type,
+        iv.scheduledAt,
+        iv.link ?? undefined,
       );
       await this.notifications.notify(c.id, 'interview.reminder', {
         interviewId: iv.id,

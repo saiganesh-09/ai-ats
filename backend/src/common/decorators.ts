@@ -3,7 +3,7 @@ import {
   SetMetadata,
   type ExecutionContext,
 } from '@nestjs/common';
-import type { Role } from '@prisma/client';
+import type { Role, User } from '@prisma/client';
 
 // Marks a route as public — skips the global JWT guard.
 export const IS_PUBLIC_KEY = 'isPublic';
@@ -17,7 +17,7 @@ export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 //   handler(@CurrentUser() user: User)
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx.switchToHttp().getRequest<{ user?: User }>();
     return request.user;
   },
 );

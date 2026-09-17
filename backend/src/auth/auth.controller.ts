@@ -14,6 +14,10 @@ import { CurrentUser, Public } from '../common/decorators';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
 
+// cookie-parser types cookies as `any` — narrow to a string map at the boundary.
+const refreshCookie = (req: Request) =>
+  (req.cookies as Record<string, string | undefined> | undefined)?.ats_rt;
+
 @Controller('auth')
 export class AuthController {
   constructor(private auth: AuthService) {}
@@ -22,7 +26,10 @@ export class AuthController {
   @Public()
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const user = await this.auth.register(dto);
     return this.auth.issueTokens(user, res);
   }
@@ -31,7 +38,10 @@ export class AuthController {
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
   @HttpCode(200)
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const user = await this.auth.login(dto.email, dto.password);
     return this.auth.issueTokens(user, res);
   }
@@ -41,13 +51,13 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.auth.refresh(req.cookies?.ats_rt, res);
+    return this.auth.refresh(refreshCookie(req), res);
   }
 
   @Post('logout')
   @HttpCode(200)
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.auth.logout(req.cookies?.ats_rt, res);
+    return this.auth.logout(refreshCookie(req), res);
   }
 
   @Get('me')

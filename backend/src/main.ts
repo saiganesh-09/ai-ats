@@ -22,9 +22,7 @@ async function bootstrap() {
 
   // Strips unknown fields and auto-validates DTOs via class-validator —
   // the backend equivalent of Zod on the frontend.
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // Uniform error envelope: { success:false, error:{code,message} } — no stacks.
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -34,7 +32,7 @@ async function bootstrap() {
     .setTitle('AI ATS API')
     .setDescription(
       'Multi-tenant applicant tracking system. All responses use the uniform ' +
-      'envelope — errors: {success:false, error:{code,message}}.',
+        'envelope — errors: {success:false, error:{code,message}}.',
     )
     .setVersion('1.0')
     .addBearerAuth()
@@ -45,4 +43,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3001);
 }
-bootstrap();
+void bootstrap();

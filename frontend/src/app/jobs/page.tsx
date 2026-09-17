@@ -41,7 +41,9 @@ export default function JobBoard() {
   const [page, setPage] = useState(1)
   const query = useDebounced({ ...filters, page, pageSize: 9 })
 
-  useEffect(() => setPage(1), [filters]) // any filter change resets pagination
+  // Filter changes reset pagination — done inside the event helper, not an
+  // effect, so there's no render-triggering setState.
+
 
   const { data, isLoading, isPlaceholderData, isError, error, refetch } = useQuery({
     queryKey: ['jobs', query],
@@ -49,8 +51,10 @@ export default function JobBoard() {
     placeholderData: keepPreviousData, // smooth pagination — no flicker
   })
 
-  const set = (k: keyof JobSearchParams, v: string | number | null | undefined) =>
+  const set = (k: keyof JobSearchParams, v: string | number | null | undefined) => {
+    setPage(1) // any filter change resets pagination
     setFilters((f) => ({ ...f, [k]: v || undefined }))
+  }
 
   const activeCount = Object.entries(filters).filter(([k, v]) => v && k !== 'sort').length
 

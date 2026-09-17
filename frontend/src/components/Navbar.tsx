@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Bell, Briefcase, LogOut, Menu } from 'lucide-react'
 import { api } from '@/lib/endpoints'
@@ -40,6 +40,7 @@ const NAV_LINKS: Record<string, { href: string; label: string }[]> = {
 export function Navbar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
   const { data: unread } = useQuery({
     queryKey: ['unread'],
     queryFn: api.unreadCount,
@@ -80,9 +81,9 @@ export function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="sm"><Menu className="h-5 w-5" /></Button>} />
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => { window.location.href = '/jobs' }}>Jobs</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { router.push('/jobs') }}>Jobs</DropdownMenuItem>
               {links.map((l) => (
-                <DropdownMenuItem key={l.href} onClick={() => { window.location.href = l.href }}>
+                <DropdownMenuItem key={l.href} onClick={() => { router.push(l.href) }}>
                   {l.label}
                 </DropdownMenuItem>
               ))}
@@ -108,7 +109,7 @@ export function Navbar() {
                     <Badge variant="secondary" className="ml-2">{user.role}</Badge>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => { window.location.href = homeFor(user) }}>
+                  <DropdownMenuItem onClick={() => { router.push(homeFor(user)) }}>
                     Dashboard
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={logout}>

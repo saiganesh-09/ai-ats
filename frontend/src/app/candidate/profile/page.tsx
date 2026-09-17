@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,9 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
 
 type Exp = { title: string; company: string; years: number; description: string }
 type Edu = { degree: string; institution: string; year: number }
@@ -20,10 +18,12 @@ type Cert = { name: string; issuer: string; year: number }
 export default function ProfilePage() {
   const qc = useQueryClient()
   const { data: profile, isLoading } = useQuery({ queryKey: ['profile'], queryFn: api.myProfile })
-  const [draft, setDraft] = useState<Profile | null>(null)
+  // Edits overlay the fetched profile — no sync-effect needed; untouched
+  // fields read straight from the query cache.
+  const [edited, setEdited] = useState<Profile | null>(null)
+  const draft = edited ?? profile ?? null
+  const setDraft = setEdited
   const [newSkill, setNewSkill] = useState('')
-
-  useEffect(() => { if (profile) setDraft(profile) }, [profile])
 
   const save = useMutation({
     mutationFn: () => api.updateProfile(draft!),

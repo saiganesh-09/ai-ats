@@ -39,7 +39,7 @@ export default function AdminReports() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-semibold">{r.job.title} <Badge variant="outline" className="ml-1">{r.job.status}</Badge></p>
-                  <p className="mt-1 text-sm">"{r.reason}"</p>
+                  <p className="mt-1 text-sm">&quot;{r.reason}&quot;</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Reported by {r.reporter.fullName} · {new Date(r.createdAt).toLocaleDateString()}
                   </p>

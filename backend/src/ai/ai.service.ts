@@ -40,11 +40,42 @@ export interface ParsedResume {
 }
 
 const SKILLS_VOCAB = [
-  'python', 'javascript', 'typescript', 'react', 'next.js', 'node', 'express',
-  'nestjs', 'fastapi', 'django', 'sql', 'postgresql', 'mysql', 'mongodb',
-  'redis', 'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'git', 'ci/cd',
-  'rest', 'graphql', 'machine learning', 'pandas', 'java', 'go', 'rust',
-  'c++', 'html', 'css', 'tailwind', 'prisma', 'linux', 'agile',
+  'python',
+  'javascript',
+  'typescript',
+  'react',
+  'next.js',
+  'node',
+  'express',
+  'nestjs',
+  'fastapi',
+  'django',
+  'sql',
+  'postgresql',
+  'mysql',
+  'mongodb',
+  'redis',
+  'docker',
+  'kubernetes',
+  'aws',
+  'gcp',
+  'azure',
+  'git',
+  'ci/cd',
+  'rest',
+  'graphql',
+  'machine learning',
+  'pandas',
+  'java',
+  'go',
+  'rust',
+  'c++',
+  'html',
+  'css',
+  'tailwind',
+  'prisma',
+  'linux',
+  'agile',
 ];
 
 /**
@@ -69,7 +100,10 @@ export class AiService {
       response_format: { type: 'json_object' },
       temperature: 0.2,
     });
-    return JSON.parse(resp.choices[0].message.content ?? '{}');
+    return JSON.parse(resp.choices[0].message.content ?? '{}') as Record<
+      string,
+      unknown
+    >;
   }
 
   private async tryAi<T>(prompt: string, mock: () => T): Promise<T> {
@@ -77,7 +111,8 @@ export class AiService {
     try {
       return (await this.chatJson(prompt)) as T;
     } catch (e) {
-      this.logger.warn(`OpenAI call failed, using mock fallback: ${e}`);
+      const reason = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`OpenAI call failed, using mock fallback: ${reason}`);
       return mock();
     }
   }
@@ -136,15 +171,21 @@ PARSED RESUME: ${JSON.stringify(parsedResume).slice(0, 6000)}`;
     return this.tryAi(prompt, () => {
       const resume = parsedResume as ParsedResume;
       const skills = resume?.skills ?? [];
-      const jobSkills = this.foundSkills(`${jobTitle} ${jobRequirements ?? ''}`);
-      const missing = jobSkills.filter((s) => !skills.map((x) => x.toLowerCase()).includes(s));
+      const jobSkills = this.foundSkills(
+        `${jobTitle} ${jobRequirements ?? ''}`,
+      );
+      const missing = jobSkills.filter(
+        (s) => !skills.map((x) => x.toLowerCase()).includes(s),
+      );
       return {
         summary: `Candidate profile lists ${skills.length} skills including ${skills.slice(0, 4).join(', ') || 'none detected'}. Review the parsed resume for details. (Mock summary — set OPENAI_API_KEY for real AI summaries.)`,
         key_skills: skills.slice(0, 6),
         relevant_experience: 'See parsed experience section for details.',
         strengths: skills.slice(0, 4),
         missing_requirements: missing.slice(0, 4),
-        interview_areas: missing.slice(0, 2).map((s) => `Depth of ${s} experience`),
+        interview_areas: missing
+          .slice(0, 2)
+          .map((s) => `Depth of ${s} experience`),
       };
     });
   }
@@ -189,7 +230,10 @@ PARSED RESUME: ${JSON.stringify(parsedResume).slice(0, 4000)}`;
 
   // ---------- job description analysis ----------
 
-  analyzeJobDescription(title: string, description: string): Promise<Record<string, unknown>> {
+  analyzeJobDescription(
+    title: string,
+    description: string,
+  ): Promise<Record<string, unknown>> {
     const prompt = `Analyze this job description for a "${title}" posting. Respond with
 ONLY valid JSON: {"required_skills":["..."],"nice_to_have":["..."],"seniority":"junior|mid|senior|lead","clarity_score":0-100,"suggestions":["one improvement per item"]}
 
@@ -234,17 +278,28 @@ DESCRIPTION: ${description.slice(0, 6000)}`;
     description: string,
     requirements?: string | null,
   ): MatchResult {
-    const jobSkills = new Set(this.foundSkills(`${description} ${requirements ?? ''}`));
+    const jobSkills = new Set(
+      this.foundSkills(`${description} ${requirements ?? ''}`),
+    );
     const resumeSkills = new Set(
-      ((parsedResume as ParsedResume)?.skills ?? []).map((s) => s.toLowerCase()),
+      ((parsedResume as ParsedResume)?.skills ?? []).map((s) =>
+        s.toLowerCase(),
+      ),
     );
     const matched = [...jobSkills].filter((s) => resumeSkills.has(s)).sort();
     const missing = [...jobSkills].filter((s) => !resumeSkills.has(s)).sort();
-    const score = jobSkills.size ? Math.round((100 * matched.length) / jobSkills.size) : 50;
+    const score = jobSkills.size
+      ? Math.round((100 * matched.length) / jobSkills.size)
+      : 50;
     const band = (s: number) =>
-      s >= 70 ? 'STRONG' as const : s >= 40 ? 'PARTIAL' as const : 'WEAK' as const;
-    const hasEducation = Array.isArray((parsedResume as ParsedResume)?.education)
-      && ((parsedResume as ParsedResume).education?.length ?? 0) > 0;
+      s >= 70
+        ? ('STRONG' as const)
+        : s >= 40
+          ? ('PARTIAL' as const)
+          : ('WEAK' as const);
+    const hasEducation =
+      Array.isArray((parsedResume as ParsedResume)?.education) &&
+      ((parsedResume as ParsedResume).education?.length ?? 0) > 0;
     return {
       score,
       matched_skills: matched,

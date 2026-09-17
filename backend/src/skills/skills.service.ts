@@ -2,11 +2,42 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 const VOCAB = [
-  'python', 'javascript', 'typescript', 'react', 'next.js', 'node', 'express',
-  'nestjs', 'fastapi', 'django', 'sql', 'postgresql', 'mysql', 'mongodb',
-  'redis', 'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'git', 'ci/cd',
-  'rest', 'graphql', 'machine learning', 'pandas', 'java', 'go', 'rust',
-  'c++', 'html', 'css', 'tailwind', 'prisma', 'linux', 'agile',
+  'python',
+  'javascript',
+  'typescript',
+  'react',
+  'next.js',
+  'node',
+  'express',
+  'nestjs',
+  'fastapi',
+  'django',
+  'sql',
+  'postgresql',
+  'mysql',
+  'mongodb',
+  'redis',
+  'docker',
+  'kubernetes',
+  'aws',
+  'gcp',
+  'azure',
+  'git',
+  'ci/cd',
+  'rest',
+  'graphql',
+  'machine learning',
+  'pandas',
+  'java',
+  'go',
+  'rust',
+  'c++',
+  'html',
+  'css',
+  'tailwind',
+  'prisma',
+  'linux',
+  'agile',
 ];
 
 /**
@@ -42,7 +73,11 @@ export class SkillsService {
   }
 
   /** Replace a job's skill links — required vs preferred is a flag on the join. */
-  async syncJobSkills(jobId: number, required: string[], preferred: string[] = []) {
+  async syncJobSkills(
+    jobId: number,
+    required: string[],
+    preferred: string[] = [],
+  ) {
     const reqIds = await this.upsertMany(required);
     const prefIds = await this.upsertMany(
       preferred.filter((p) => !reqIds.has(p.trim().toLowerCase())), // required wins
@@ -51,15 +86,27 @@ export class SkillsService {
       this.prisma.jobSkill.deleteMany({ where: { jobId } }),
       this.prisma.jobSkill.createMany({
         data: [
-          ...[...reqIds.values()].map((skillId) => ({ jobId, skillId, required: true })),
-          ...[...prefIds.values()].map((skillId) => ({ jobId, skillId, required: false })),
+          ...[...reqIds.values()].map((skillId) => ({
+            jobId,
+            skillId,
+            required: true,
+          })),
+          ...[...prefIds.values()].map((skillId) => ({
+            jobId,
+            skillId,
+            required: false,
+          })),
         ],
       }),
     ]);
   }
 
   /** Merge skills into a candidate's profile (resume upload adds, never removes). */
-  async mergeCandidateSkills(userId: number, names: string[], source = 'manual') {
+  async mergeCandidateSkills(
+    userId: number,
+    names: string[],
+    source = 'manual',
+  ) {
     const ids = await this.upsertMany(names);
     await this.prisma.candidateSkill.createMany({
       data: [...ids.values()].map((skillId) => ({ userId, skillId, source })),

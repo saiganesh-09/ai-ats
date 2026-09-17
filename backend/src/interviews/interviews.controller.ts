@@ -5,12 +5,21 @@ import {
   ForbiddenException,
   Get,
   NotFoundException,
-  Param,
-  ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
-import { ApplicationStatus, InterviewType, Role, type User } from '@prisma/client';
+import {
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import {
+  ApplicationStatus,
+  InterviewType,
+  Role,
+  type User,
+} from '@prisma/client';
 import { ActivityService } from '../activity/activity.service';
 import { CurrentUser, Roles } from '../common/decorators';
 import { EmailService } from '../email/email.service';
@@ -58,7 +67,7 @@ export class InterviewsController {
           throw new ForbiddenException('Not assigned to this job');
         }
       } else if (app.job.companyId !== user.companyId) {
-        throw new ForbiddenException('Not your company\'s job');
+        throw new ForbiddenException("Not your company's job");
       }
     }
     const terminal: ApplicationStatus[] = [
@@ -66,7 +75,9 @@ export class InterviewsController {
       ApplicationStatus.WITHDRAWN,
     ];
     if (terminal.includes(app.status)) {
-      throw new BadRequestException(`Cannot schedule for a ${app.status} application`);
+      throw new BadRequestException(
+        `Cannot schedule for a ${app.status} application`,
+      );
     }
     if (dto.endsAt && new Date(dto.endsAt) <= new Date(dto.scheduledAt)) {
       throw new BadRequestException('End time must be after start time');
@@ -75,10 +86,22 @@ export class InterviewsController {
       throw new BadRequestException('Online interviews need a meeting link');
     }
     if (dto.interviewerId) {
-      const iv = await this.prisma.user.findUnique({ where: { id: dto.interviewerId } });
-      const staffRoles: Role[] = [Role.RECRUITER, Role.HIRING_MANAGER, Role.ADMIN];
-      if (!iv || iv.companyId !== app.job.companyId || !staffRoles.includes(iv.role)) {
-        throw new BadRequestException('Interviewer must be staff at this company');
+      const iv = await this.prisma.user.findUnique({
+        where: { id: dto.interviewerId },
+      });
+      const staffRoles: Role[] = [
+        Role.RECRUITER,
+        Role.HIRING_MANAGER,
+        Role.ADMIN,
+      ];
+      if (
+        !iv ||
+        iv.companyId !== app.job.companyId ||
+        !staffRoles.includes(iv.role)
+      ) {
+        throw new BadRequestException(
+          'Interviewer must be staff at this company',
+        );
       }
     }
 
@@ -126,10 +149,19 @@ export class InterviewsController {
       });
     }
     this.email.interviewInvitation(
-      app.candidate.email, app.candidate.fullName, app.job.title,
-      dto.type, new Date(dto.scheduledAt), dto.link,
+      app.candidate.email,
+      app.candidate.fullName,
+      app.job.title,
+      dto.type,
+      new Date(dto.scheduledAt),
+      dto.link,
     );
-    await this.activity.log(user.id, 'interview.scheduled', 'interview', interview.id);
+    await this.activity.log(
+      user.id,
+      'interview.scheduled',
+      'interview',
+      interview.id,
+    );
     return interview;
   }
 
@@ -137,8 +169,8 @@ export class InterviewsController {
   @Get('company')
   @Roles(...STAFF)
   company(@CurrentUser() user: User) {
-    const jobWhere =
-      user.isSuperadmin ? {}
+    const jobWhere = user.isSuperadmin
+      ? {}
       : user.role === Role.HIRING_MANAGER
         ? { hiringManagerId: user.id }
         : { companyId: user.companyId ?? -1 };
@@ -167,7 +199,9 @@ export class InterviewsController {
         interviewer: { select: { fullName: true } },
         scheduledBy: { select: { fullName: true } },
         application: {
-          include: { job: { include: { company: { select: { name: true } } } } },
+          include: {
+            job: { include: { company: { select: { name: true } } } },
+          },
         },
       },
       orderBy: { scheduledAt: 'asc' },

@@ -105,7 +105,13 @@ export class CompaniesController {
       where: { id: user.companyId },
       include: {
         users: {
-          select: { id: true, fullName: true, email: true, role: true, isActive: true },
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
           orderBy: { id: 'asc' },
         },
       },

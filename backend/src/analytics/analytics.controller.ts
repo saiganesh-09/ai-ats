@@ -30,11 +30,21 @@ export class AnalyticsController {
     const appWhere = companyId ? { job: { companyId } } : {};
 
     const [
-      totalJobs, activeJobs, totalApplicants, shortlisted,
-      interviews, offers, hires, rejected, funnel, trend,
+      totalJobs,
+      activeJobs,
+      totalApplicants,
+      shortlisted,
+      interviews,
+      offers,
+      hires,
+      rejected,
+      funnel,
+      trend,
     ] = await Promise.all([
       this.prisma.job.count({ where: jobWhere }),
-      this.prisma.job.count({ where: { ...jobWhere, status: JobStatus.PUBLISHED } }),
+      this.prisma.job.count({
+        where: { ...jobWhere, status: JobStatus.PUBLISHED },
+      }),
       this.prisma.application.count({ where: appWhere }),
       this.prisma.application.count({
         where: { ...appWhere, status: ApplicationStatus.SHORTLISTED },
@@ -43,7 +53,10 @@ export class AnalyticsController {
         where: companyId ? { application: appWhere } : {},
       }),
       this.prisma.application.count({
-        where: { ...appWhere, status: { in: [ApplicationStatus.OFFER, ApplicationStatus.HIRED] } },
+        where: {
+          ...appWhere,
+          status: { in: [ApplicationStatus.OFFER, ApplicationStatus.HIRED] },
+        },
       }),
       this.prisma.application.count({
         where: { ...appWhere, status: ApplicationStatus.HIRED },
@@ -92,25 +105,42 @@ export class AnalyticsController {
   @Get('candidate-dashboard')
   @Roles(Role.CANDIDATE)
   async candidateDashboard(@CurrentUser() user: User) {
-    const [profile, skillLinks, statusCounts, savedCount, upcoming, unread, resumeCount, appliedJobIds] =
-      await Promise.all([
-        this.prisma.profile.findUnique({ where: { userId: user.id } }),
-        this.prisma.candidateSkill.findMany({
-          where: { userId: user.id }, select: { skillId: true },
-        }),
-        this.prisma.application.groupBy({
-          by: ['status'], where: { candidateId: user.id }, _count: { _all: true },
-        }),
-        this.prisma.savedJob.count({ where: { userId: user.id } }),
-        this.prisma.interview.count({
-          where: { application: { candidateId: user.id }, scheduledAt: { gte: new Date() } },
-        }),
-        this.prisma.notification.count({ where: { userId: user.id, readAt: null } }),
-        this.prisma.resume.count({ where: { candidateId: user.id } }),
-        this.prisma.application.findMany({
-          where: { candidateId: user.id }, select: { jobId: true },
-        }),
-      ]);
+    const [
+      profile,
+      skillLinks,
+      statusCounts,
+      savedCount,
+      upcoming,
+      unread,
+      resumeCount,
+      appliedJobIds,
+    ] = await Promise.all([
+      this.prisma.profile.findUnique({ where: { userId: user.id } }),
+      this.prisma.candidateSkill.findMany({
+        where: { userId: user.id },
+        select: { skillId: true },
+      }),
+      this.prisma.application.groupBy({
+        by: ['status'],
+        where: { candidateId: user.id },
+        _count: { _all: true },
+      }),
+      this.prisma.savedJob.count({ where: { userId: user.id } }),
+      this.prisma.interview.count({
+        where: {
+          application: { candidateId: user.id },
+          scheduledAt: { gte: new Date() },
+        },
+      }),
+      this.prisma.notification.count({
+        where: { userId: user.id, readAt: null },
+      }),
+      this.prisma.resume.count({ where: { candidateId: user.id } }),
+      this.prisma.application.findMany({
+        where: { candidateId: user.id },
+        select: { jobId: true },
+      }),
+    ]);
 
     // Profile completion: 8 weighted checkpoints, each worth ~12.5%.
     const [expCount, eduCount, certCount] = await Promise.all([
@@ -120,11 +150,17 @@ export class AnalyticsController {
     ]);
     const checks = [
       !!profile?.headline,
-      skillLinks.length > 0, skillLinks.length >= 5,
-      expCount > 0, expCount >= 2, eduCount > 0,
-      certCount > 0, resumeCount > 0,
+      skillLinks.length > 0,
+      skillLinks.length >= 5,
+      expCount > 0,
+      expCount >= 2,
+      eduCount > 0,
+      certCount > 0,
+      resumeCount > 0,
     ];
-    const profileCompletion = Math.round((checks.filter(Boolean).length / checks.length) * 100);
+    const profileCompletion = Math.round(
+      (checks.filter(Boolean).length / checks.length) * 100,
+    );
 
     // Recommended jobs: PUBLISHED + deadline-open + not applied + shares ≥1 skill.
     // Overlap counting happens in JS on the already-filtered set — the published
@@ -135,7 +171,10 @@ export class AnalyticsController {
       where: {
         status: JobStatus.PUBLISHED,
         id: { notIn: [...applied] },
-        OR: [{ applicationDeadline: null }, { applicationDeadline: { gte: new Date() } }],
+        OR: [
+          { applicationDeadline: null },
+          { applicationDeadline: { gte: new Date() } },
+        ],
         ...(mySkillIds.size
           ? { skills: { some: { skillId: { in: [...mySkillIds] } } } }
           : {}),
@@ -158,7 +197,8 @@ export class AnalyticsController {
         salaryMax: j.salaryMax,
         // Weight required skills double — they matter more to fit.
         matchCount: j.skills.reduce(
-          (n, s) => n + (mySkillIds.has(s.skillId) ? (s.required ? 2 : 1) : 0), 0,
+          (n, s) => n + (mySkillIds.has(s.skillId) ? (s.required ? 2 : 1) : 0),
+          0,
         ),
       }))
       .filter((j) => j.matchCount > 0)
@@ -168,7 +208,9 @@ export class AnalyticsController {
     return {
       profileCompletion,
       missingCheckpoints: checks.filter((c) => !c).length,
-      statusCounts: Object.fromEntries(statusCounts.map((s) => [s.status, s._count._all])),
+      statusCounts: Object.fromEntries(
+        statusCounts.map((s) => [s.status, s._count._all]),
+      ),
       savedJobs: savedCount,
       upcomingInterviews: upcoming,
       unreadNotifications: unread,

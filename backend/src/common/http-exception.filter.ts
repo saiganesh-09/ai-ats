@@ -37,19 +37,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const status = exception.getStatus();
     const body = exception.getResponse();
-    const payload = typeof body === 'object' && body !== null
-      ? (body as Record<string, unknown>)
-      : { message: body };
+    const payload =
+      typeof body === 'object' && body !== null
+        ? (body as Record<string, unknown>)
+        : { message: body };
 
     const message = Array.isArray(payload.message)
       ? (payload.message as string[]).join('; ')
-      : String(payload.message ?? exception.message);
+      : typeof payload.message === 'string'
+        ? payload.message
+        : exception.message;
 
-    const code = String(
-      payload.code ??
-      (Array.isArray(payload.message) ? 'VALIDATION_FAILED'
-        : HttpStatus[status] ?? 'ERROR'),
-    );
+    const code =
+      typeof payload.code === 'string'
+        ? payload.code
+        : Array.isArray(payload.message)
+          ? 'VALIDATION_FAILED'
+          : (HttpStatus[status] ?? 'ERROR');
 
     res.status(status).json({ success: false, error: { code, message } });
   }

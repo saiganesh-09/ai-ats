@@ -26,14 +26,23 @@ import { CurrentUser, Roles } from '../common/decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { SkillsService } from '../skills/skills.service';
 import { sanitizeFilename, sanitizeParsed } from './parsed-resume';
-import { resumeKey, STORAGE, type ObjectStorage } from '../storage/storage.service';
+import {
+  resumeKey,
+  STORAGE,
+  type ObjectStorage,
+} from '../storage/storage.service';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
 // Extension + MIME whitelist — both checked (extension alone is spoofable).
 const ALLOWED = new Map([
   ['pdf', new Set(['application/pdf'])],
-  ['docx', new Set(['application/vnd.openxmlformats-officedocument.wordprocessingml.document'])],
+  [
+    'docx',
+    new Set([
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]),
+  ],
   ['txt', new Set(['text/plain'])],
 ]);
 
@@ -54,19 +63,32 @@ export class ResumesController {
   @Post()
   @Roles(Role.CANDIDATE)
   @UseInterceptors(FileInterceptor('file'))
-  async upload(@CurrentUser() user: User, @UploadedFile() file: Express.Multer.File) {
+  async upload(
+    @CurrentUser() user: User,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    if (file.size > MAX_SIZE) throw new BadRequestException('File too large (max 5MB)');
+    if (file.size > MAX_SIZE)
+      throw new BadRequestException('File too large (max 5MB)');
     if (file.size === 0) throw new BadRequestException('Empty file');
 
     // Validate type by extension AND declared mimetype.
-    const ext = sanitizeFilename(file.originalname).split('.').pop()?.toLowerCase() ?? '';
+    const ext =
+      sanitizeFilename(file.originalname).split('.').pop()?.toLowerCase() ?? '';
     const mimes = ALLOWED.get(ext);
     if (!mimes) {
-      throw new UnprocessableEntityException('Only .pdf, .docx and .txt resumes are supported');
+      throw new UnprocessableEntityException(
+        'Only .pdf, .docx and .txt resumes are supported',
+      );
     }
-    if (file.mimetype && !mimes.has(file.mimetype) && file.mimetype !== 'application/octet-stream') {
-      throw new UnprocessableEntityException(`Unexpected file type: ${file.mimetype}`);
+    if (
+      file.mimetype &&
+      !mimes.has(file.mimetype) &&
+      file.mimetype !== 'application/octet-stream'
+    ) {
+      throw new UnprocessableEntityException(
+        `Unexpected file type: ${file.mimetype}`,
+      );
     }
 
     const filename = sanitizeFilename(file.originalname);
@@ -117,7 +139,10 @@ export class ResumesController {
   @Delete(':id')
   @Roles(Role.CANDIDATE)
   @HttpCode(204)
-  async remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async remove(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const resume = await this.prisma.resume.findUnique({ where: { id } });
     if (!resume || resume.candidateId !== user.id) {
       throw new NotFoundException('Resume not found');
@@ -158,7 +183,10 @@ export class ResumesController {
     res.send(data);
   }
 
-  private async extract(file: Express.Multer.File, ext: string): Promise<string> {
+  private async extract(
+    file: Express.Multer.File,
+    ext: string,
+  ): Promise<string> {
     if (ext === 'txt') return file.buffer.toString('utf-8');
     let text = '';
     if (ext === 'pdf') {
@@ -169,7 +197,9 @@ export class ResumesController {
       text = value;
     }
     if (!text.trim()) {
-      throw new UnprocessableEntityException('Could not extract text (scanned or corrupt file?)');
+      throw new UnprocessableEntityException(
+        'Could not extract text (scanned or corrupt file?)',
+      );
     }
     return text;
   }

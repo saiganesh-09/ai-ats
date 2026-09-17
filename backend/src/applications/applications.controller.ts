@@ -4,7 +4,6 @@ import {
   Controller,
   ForbiddenException,
   Get,
-  HttpCode,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -27,7 +26,6 @@ import {
   ApplicationStatus,
   JobStatus,
   Role,
-  type Application,
   type Prisma,
   type User,
 } from '@prisma/client';
@@ -54,7 +52,12 @@ class ApplyDto {
 
 class StatusDto {
   @IsIn([
-    'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED',
+    'SCREENING',
+    'SHORTLISTED',
+    'INTERVIEW',
+    'OFFER',
+    'HIRED',
+    'REJECTED',
   ] as const)
   status!: ApplicationStatus;
 
@@ -132,7 +135,12 @@ export class ApplicationsController {
         },
         include: { job: { include: { company: { select: { name: true } } } } },
       });
-      await this.recordHistory(application.id, null, ApplicationStatus.APPLIED, user.id);
+      await this.recordHistory(
+        application.id,
+        null,
+        ApplicationStatus.APPLIED,
+        user.id,
+      );
       // Candidate gets a receipt; the owning recruiter gets a new-application ping.
       await this.notifications.notify(user.id, 'application.submitted', {
         applicationId: application.id,
@@ -146,7 +154,12 @@ export class ApplicationsController {
           candidateName: user.fullName,
         });
       }
-      await this.activity.log(user.id, 'application.submitted', 'application', application.id);
+      await this.activity.log(
+        user.id,
+        'application.submitted',
+        'application',
+        application.id,
+      );
       return application;
     } catch (e) {
       // Unique constraint (jobId, candidateId) → already applied
@@ -171,7 +184,10 @@ export class ApplicationsController {
 
   @Post(':id/withdraw')
   @Roles(Role.CANDIDATE)
-  async withdraw(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async withdraw(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const app = await this.prisma.application.findUnique({
       where: { id },
       include: { job: true },
@@ -180,21 +196,28 @@ export class ApplicationsController {
       throw new NotFoundException('Application not found');
     }
     if (!WITHDRAWABLE.includes(app.status)) {
-      throw new BadRequestException(
-        `Cannot withdraw at ${app.status} stage`,
-      );
+      throw new BadRequestException(`Cannot withdraw at ${app.status} stage`);
     }
     const updated = await this.prisma.application.update({
       where: { id },
       data: { status: ApplicationStatus.WITHDRAWN },
     });
-    await this.recordHistory(id, app.status, ApplicationStatus.WITHDRAWN, user.id);
+    await this.recordHistory(
+      id,
+      app.status,
+      ApplicationStatus.WITHDRAWN,
+      user.id,
+    );
     // Candidate response → the owning recruiter sees it immediately.
-    await this.notifications.notify(app.job.recruiterId, 'candidate.withdrawn', {
-      applicationId: app.id,
-      jobTitle: app.job.title,
-      candidateName: user.fullName,
-    });
+    await this.notifications.notify(
+      app.job.recruiterId,
+      'candidate.withdrawn',
+      {
+        applicationId: app.id,
+        jobTitle: app.job.title,
+        candidateName: user.fullName,
+      },
+    );
     return updated;
   }
 
@@ -210,14 +233,20 @@ export class ApplicationsController {
     @Query('page') page = '1',
     @Query('pageSize') pageSize = '25',
   ) {
-    const jobWhere =
-      user.isSuperadmin ? {}
+    const jobWhere = user.isSuperadmin
+      ? {}
       : user.role === Role.HIRING_MANAGER
         ? { hiringManagerId: user.id }
         : { companyId: user.companyId ?? -1 };
     const where = {
       job: jobWhere,
-      ...(q ? { candidate: { fullName: { contains: q, mode: 'insensitive' as const } } } : {}),
+      ...(q
+        ? {
+            candidate: {
+              fullName: { contains: q, mode: 'insensitive' as const },
+            },
+          }
+        : {}),
     };
     const p = Math.max(1, Number(page) || 1);
     const size = Math.min(100, Math.max(1, Number(pageSize) || 25));
@@ -235,7 +264,13 @@ export class ApplicationsController {
       }),
       this.prisma.application.count({ where }),
     ]);
-    return { items, total, page: p, pageSize: size, totalPages: Math.max(1, Math.ceil(total / size)) };
+    return {
+      items,
+      total,
+      page: p,
+      pageSize: size,
+      totalPages: Math.max(1, Math.ceil(total / size)),
+    };
   }
 
   /** Applicants for one job, with search/filter/sort. Company- or HM-scoped. */
@@ -250,9 +285,11 @@ export class ApplicationsController {
   ) {
     await this.staffJob(jobId, user);
     const orderBy: Prisma.ApplicationOrderByWithRelationInput =
-      sort === 'score_asc' ? { matchScore: 'asc' }
-      : sort === 'oldest' ? { createdAt: 'asc' }
-      : { matchScore: { sort: 'desc', nulls: 'last' } };
+      sort === 'score_asc'
+        ? { matchScore: 'asc' }
+        : sort === 'oldest'
+          ? { createdAt: 'asc' }
+          : { matchScore: { sort: 'desc', nulls: 'last' } };
     return this.prisma.application.findMany({
       where: {
         jobId,
@@ -282,7 +319,10 @@ export class ApplicationsController {
   /** Full detail for the staff review view: notes, feedback, interviews. */
   @Get(':id')
   @Roles(...STAFF)
-  async detail(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async detail(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const app = await this.staffApplication(id, user);
     return this.prisma.application.findUnique({
       where: { id: app.id },
@@ -290,7 +330,10 @@ export class ApplicationsController {
         job: { include: { company: { select: { name: true } } } },
         candidate: {
           select: {
-            id: true, fullName: true, email: true, profile: true,
+            id: true,
+            fullName: true,
+            email: true,
+            profile: true,
             skills: { include: { skill: { select: { name: true } } } },
             experiences: { orderBy: { id: 'asc' } },
           },
@@ -326,18 +369,36 @@ export class ApplicationsController {
       where: { id: app.id },
       data: { status: dto.status },
     });
-    await this.recordHistory(app.id, app.status, dto.status, user.id, dto.reason);
+    await this.recordHistory(
+      app.id,
+      app.status,
+      dto.status,
+      user.id,
+      dto.reason,
+    );
     await this.notifications.notify(app.candidateId, 'application.status', {
       applicationId: app.id,
       jobId: app.jobId,
       status: dto.status,
     });
-    this.email.statusUpdate(app.candidate.email, app.candidate.fullName, app.job.title, dto.status);
+    this.email.statusUpdate(
+      app.candidate.email,
+      app.candidate.fullName,
+      app.job.title,
+      dto.status,
+    );
     if (dto.status === ApplicationStatus.OFFER) {
-      this.email.offerNotification(app.candidate.email, app.candidate.fullName, app.job.title);
+      this.email.offerNotification(
+        app.candidate.email,
+        app.candidate.fullName,
+        app.job.title,
+      );
     }
     await this.activity.log(
-      user.id, 'application.status_changed', 'application', app.id,
+      user.id,
+      'application.status_changed',
+      'application',
+      app.id,
       { status: dto.status },
     );
     return updated;
@@ -417,7 +478,10 @@ export class ApplicationsController {
 
   @Post(':id/score')
   @Roles(...STAFF)
-  async score(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async score(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const app = await this.staffApplication(id, user);
     const result = await this.ai.scoreMatch(
       app.resume.parsed ?? { raw_text: app.resume.rawText.slice(0, 4000) },
@@ -427,14 +491,20 @@ export class ApplicationsController {
     );
     await this.prisma.application.update({
       where: { id: app.id },
-      data: { matchScore: result.score, matchDetails: result as object },
+      data: {
+        matchScore: result.score,
+        matchDetails: result as unknown as Prisma.InputJsonValue,
+      },
     });
     return result;
   }
 
   @Post(':id/summarize')
   @Roles(...STAFF)
-  async summarize(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async summarize(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const app = await this.staffApplication(id, user);
     const result = await this.ai.summarizeCandidate(
       app.resume.parsed,
@@ -443,7 +513,7 @@ export class ApplicationsController {
     );
     await this.prisma.application.update({
       where: { id: app.id },
-      data: { aiSummary: result as object },
+      data: { aiSummary: result as unknown as Prisma.InputJsonValue },
     });
     return result;
   }
@@ -451,7 +521,10 @@ export class ApplicationsController {
   /** Generate (or regenerate) categorized interview questions — persisted. */
   @Post(':id/questions')
   @Roles(...STAFF)
-  async questions(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async questions(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const app = await this.staffApplication(id, user);
     const bank = await this.ai.generateInterviewQuestions(
       app.resume.parsed,
@@ -460,7 +533,7 @@ export class ApplicationsController {
     );
     await this.prisma.application.update({
       where: { id: app.id },
-      data: { aiQuestions: bank as object },
+      data: { aiQuestions: bank as unknown as Prisma.InputJsonValue },
     });
     return bank;
   }
@@ -475,12 +548,18 @@ export class ApplicationsController {
   ) {
     const app = await this.staffApplication(id, user);
     const q = dto.questions;
-    const valid = q && typeof q === 'object' && !Array.isArray(q) &&
-      Object.values(q).every((arr) => Array.isArray(arr) && arr.every((s) => typeof s === 'string'));
-    if (!valid) throw new BadRequestException('questions must be {category: string[]}');
+    const valid =
+      q &&
+      typeof q === 'object' &&
+      !Array.isArray(q) &&
+      Object.values(q).every(
+        (arr) => Array.isArray(arr) && arr.every((s) => typeof s === 'string'),
+      );
+    if (!valid)
+      throw new BadRequestException('questions must be {category: string[]}');
     const updated = await this.prisma.application.update({
       where: { id: app.id },
-      data: { aiQuestions: q as object },
+      data: { aiQuestions: q },
     });
     return updated.aiQuestions;
   }
@@ -497,7 +576,7 @@ export class ApplicationsController {
         throw new ForbiddenException('Not assigned to this job');
       }
     } else if (job.companyId !== user.companyId) {
-      throw new ForbiddenException('Not your company\'s job');
+      throw new ForbiddenException("Not your company's job");
     }
     return job;
   }
@@ -513,6 +592,6 @@ export class ApplicationsController {
     });
     if (!app) throw new NotFoundException('Application not found');
     await this.staffJob(app.jobId, user);
-    return app as Application & { job: { companyId: number }; resume: { parsed: unknown; rawText: string } } & typeof app;
+    return app;
   }
 }
