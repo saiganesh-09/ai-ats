@@ -269,6 +269,7 @@ export default function ApplicantDetail({ params }: { params: Promise<{ id: stri
                       <p>
                         {h.fromStatus ? <span className="text-muted-foreground">{h.fromStatus} → </span> : ''}
                         <strong>{h.toStatus}</strong>
+                        {h.reason && <span className="ml-1 text-xs text-muted-foreground">— {h.reason}</span>}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {h.changedBy?.fullName ?? 'system'} · {new Date(h.createdAt).toLocaleString()}

@@ -85,8 +85,8 @@ export const api = {
     return request<Application[]>(`/applications/job/${jobId}${qs.size ? `?${qs}` : ''}`)
   },
   applicationDetail: (id: number) => request<Application>(`/applications/${id}`),
-  setStatus: (id: number, status: string) =>
-    request<Application>(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  setStatus: (id: number, status: string, reason?: string) =>
+    request<Application>(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
   assign: (id: number, recruiterId: number) =>
     request<Application>(`/applications/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ recruiterId }) }),
   addNote: (id: number, text: string) =>

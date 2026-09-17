@@ -287,6 +287,7 @@ model ApplicationStatusHistory {
   toStatus      ApplicationStatus @map("to_status")
   changedById   Int?              @map("changed_by_id")
   changedBy     User?             @relation(fields: [changedById], references: [id])
+  reason        String?           // e.g. rejection reason — spec's optional field
   createdAt     DateTime          @default(now()) @map("created_at")
 
   @@index([applicationId])

@@ -54,6 +54,8 @@ class StatusDto {
     'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED',
   ] as const)
   status!: ApplicationStatus;
+
+  @IsOptional() @IsString() reason?: string; // recorded on the history row
 }
 
 class AssignDto {
@@ -85,9 +87,10 @@ export class ApplicationsController {
     fromStatus: ApplicationStatus | null,
     toStatus: ApplicationStatus,
     changedById?: number,
+    reason?: string,
   ) {
     return this.prisma.applicationStatusHistory.create({
-      data: { applicationId, fromStatus, toStatus, changedById },
+      data: { applicationId, fromStatus, toStatus, changedById, reason },
     });
   }
 
@@ -250,7 +253,7 @@ export class ApplicationsController {
       where: { id: app.id },
       data: { status: dto.status },
     });
-    await this.recordHistory(app.id, app.status, dto.status, user.id);
+    await this.recordHistory(app.id, app.status, dto.status, user.id, dto.reason);
     await this.notifications.notify(app.candidateId, 'application.status', {
       applicationId: app.id,
       jobId: app.jobId,

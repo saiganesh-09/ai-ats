@@ -129,6 +129,7 @@ export interface Application {
     id: number
     fromStatus: ApplicationStatus | null
     toStatus: ApplicationStatus
+    reason: string | null
     createdAt: string
     changedBy: { fullName: string } | null
   }[]
