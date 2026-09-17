@@ -41,6 +41,10 @@ async function bootstrap() {
     SwaggerModule.createDocument(app, spec),
   );
 
+  // Drain DB connections on SIGTERM/SIGINT — deploy platforms send SIGTERM
+  // on every redeploy; without this, connections hang until they time out.
+  app.enableShutdownHooks();
+
   await app.listen(process.env.PORT ?? 3001);
 }
 void bootstrap();

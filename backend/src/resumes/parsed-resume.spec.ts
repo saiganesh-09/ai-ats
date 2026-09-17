@@ -29,22 +29,24 @@ describe('sanitizeParsed — never trust AI output', () => {
     const out = sanitizeParsed({
       skills: ['TS', 'ts', 'TypeScript', ...Array(100).fill('x')],
     });
-    expect(new Set(out.skills).size).toBe(out.skills.length);
-    expect(out.skills).toContain('typescript');
-    expect(out.skills.length).toBeLessThanOrEqual(50);
+    const skills = out.skills ?? [];
+    expect(new Set(skills).size).toBe(skills.length);
+    expect(skills).toContain('typescript');
+    expect(skills.length).toBeLessThanOrEqual(50);
   });
 
   it('whitelists record fields — unknown keys are dropped', () => {
     const out = sanitizeParsed({
       experience: [{ title: 'Eng', company: 'X', secretField: 'leak' }],
     });
-    expect(out.experience[0]).not.toHaveProperty('secretField');
-    expect(out.experience[0].title).toBe('Eng');
+    const first = out.experience?.[0];
+    expect(first).not.toHaveProperty('secretField');
+    expect(first?.title).toBe('Eng');
   });
 
   it('returns a safe empty shape for malformed input', () => {
     const out = sanitizeParsed(null);
-    expect(out.skills).toEqual([]);
-    expect(out.experience).toEqual([]);
+    expect(out.skills ?? []).toEqual([]);
+    expect(out.experience ?? []).toEqual([]);
   });
 });

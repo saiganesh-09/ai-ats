@@ -28,12 +28,32 @@ Target layout: **Vercel** (Next.js) + **Render/Railway/AWS** (NestJS) +
    - Either: **Docker** — uses `backend/Dockerfile` (runs `prisma migrate deploy` then starts).
    - Or: **Node** — build `npm ci && npx prisma generate && npm run build`, start `node dist/main.js`.
 2. Set all backend env vars above.
-3. Persistent disk is NOT needed — resumes belong in S3, not the container FS.
+3. **Health check path: `/api/health`** — returns `{status, db, uptime}`;
+   `status` is `degraded` when Postgres is unreachable. Render/Railway/Fly all
+   accept a custom health path — point it there, not at `/`.
+4. Persistent disk is NOT needed — resumes belong in S3, not the container FS.
 
 ## Database → managed Postgres
 
 Any Postgres 14+ works (Neon free tier, Railway plugin, RDS). Paste the
 connection string into `DATABASE_URL`; `migrate deploy` runs on container start.
+
+**Neon (recommended free tier):** create project → copy the `postgresql://`
+string → append `?sslmode=require` if missing → that's `DATABASE_URL`.
+Seed demo data once: run `npm run seed` (or `npx tsx prisma/seed.ts`) from
+`backend/` with `DATABASE_URL` pointing at Neon.
+
+## Public demo mode
+
+For a live portfolio demo, set `NEXT_PUBLIC_DEMO_MODE=true` on Vercel — the
+UI shows a banner with demo logins and a reset notice. To refresh demo data
+periodically, add a Render **cron job** running:
+
+```bash
+cd backend && npx prisma migrate reset --force --skip-seed && npx tsx prisma/seed.ts
+```
+
+(Or run it manually whenever the demo data gets messy.)
 
 ## Files → S3
 

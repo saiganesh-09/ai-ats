@@ -14,6 +14,10 @@ scoring, hiring managers review assigned candidates, and admins moderate the
 platform — with notifications, transactional email, audit logging, and a full
 test + CI setup.
 
+**Live demo:** _deploy steps in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) —
+Vercel + Render + Neon free tier, ~15 min._
+Demo logins: `rita@acme.com` (recruiter) · `carol@example.com` (candidate) · `admin@acme.com` (admin) — password `password123`.
+
 ## Features
 
 - **4 roles + RBAC** — candidate, recruiter, hiring manager, admin (company

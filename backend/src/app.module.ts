@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { StringValue } from 'ms';
 import { ActivityModule } from './activity/activity.module';
+import { AppController } from './app.controller';
 import { AdminModule } from './admin/admin.module';
 import { AiModule } from './ai/ai.module';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -54,6 +55,7 @@ import { StorageModule } from './storage/storage.module';
     AnalyticsModule,
     AdminModule,
   ],
+  controllers: [AppController],
   providers: [
     // Guards run globally in this order: rate-limit, authenticate, authorize.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
