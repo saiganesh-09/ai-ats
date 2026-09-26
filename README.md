@@ -229,3 +229,18 @@ S3 + SMTP — each external service swaps behind its interface via env vars.
 - Email provider is console in dev (set `SMTP_HOST` to send real mail)
 - Recommendation scoring happens in JS over the filtered published set —
   bounded, but not a vector/similarity engine
+
+## Contributors
+
+Thanks to the people who have contributed to this project:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/saiganesh-09">
+        <img src="https://github.com/saiganesh-09.png" width="80" alt="saiganesh-09"/><br />
+        <sub><b>saiganesh-09</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
